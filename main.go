@@ -42,14 +42,14 @@ func main() {
 
 			if strings.HasPrefix(text, "/start") {
 				if game == nil {
-					api.sendText(chatID, "No hay ninguna partida en curso, empieza una uniendote con /join")
+					api.sendText(chatID, "No hay ninguna campaña en curso, empieza una uniendote con /join")
 					continue
 				}
 
 				game.Started = true
 				game.SetNextPlayer()
 
-				api.sendText(chatID, "¡La partida ha comenzado!")
+				api.sendText(chatID, "¡La campaña ha comenzado!")
 				api.sendText(chatID, fmt.Sprintf("%s te encuentras en el baño haciendo kk, que quieres hacer?", game.CurrentPlayer.Name))
 			} else if strings.HasPrefix(text, "/join") {
 				if game == nil {
@@ -60,6 +60,11 @@ func main() {
 
 				if player := game.FindPlayer(message.User.ID); player != nil {
 					api.sendText(chatID, fmt.Sprintf("¡Ya eres un jugador! %+v", player))
+					continue
+				}
+
+				if game.Started {
+					api.sendText(chatID, "La campaña ya ha comenzado, ¡No puedes unirte!")
 					continue
 				}
 
@@ -78,18 +83,18 @@ func main() {
 				}
 			} else if strings.HasPrefix(text, "/whoami") {
 				if game == nil {
-					api.sendText(chatID, "No hay ninguna partida en curso, empieza una uniendote con /join")
+					api.sendText(chatID, "No hay ninguna campaña en curso, empieza una uniendote con /join")
 					continue
 				}
 
 				if player := game.FindPlayer(message.User.ID); player != nil {
 					api.sendText(chatID, fmt.Sprintf("Eres %+v", player))
 				} else {
-					api.sendText(chatID, "No te has unido a la partida, unete con /join")
+					api.sendText(chatID, "No te has unido a la campaña, unete con /join")
 				}
 			} else if game != nil && game.CurrentPlayer != nil && game.CurrentPlayer.ID == message.User.ID {
 				api.sendText(chatID, fmt.Sprintf("%s se ha hecho kk encima, y ha muerto...", game.CurrentPlayer.Name))
-				api.sendText(chatID, "¡La partida ha terminado!")
+				api.sendText(chatID, "¡La campaña ha terminado!")
 			}
 		}
 	}
