@@ -7,25 +7,45 @@ import (
 	"net/http"
 )
 
+type User struct {
+	ID        int64  `json:"id"`
+	Username  string `json:"username"`
+	FirstName string `json:"first_name"`
+}
+
+type Message struct {
+	ID   int64  `json:"message_id"`
+	Text string `json:"text"`
+	Chat struct {
+		ID   int64  `json:"id"`
+		Type string `json:"type"` // private, group, supergroup, channel
+	} `json:"chat"`
+	User User `json:"from"`
+}
+
 type Update struct {
-	UpdateID int `json:"update_id"`
-	Message  struct {
-		Text string `json:"text"`
-		Chat struct {
-			ID   int64  `json:"id"`
-			Type string `json:"type"` // private, group, supergroup, channel
-		} `json:"chat"`
-		User struct {
-			ID        int64  `json:"id"`
-			Username  string `json:"username"`
-			FirstName string `json:"first_name"`
-		} `json:"from"`
-	} `json:"message"`
+	UpdateID      int     `json:"update_id"`
+	Message       Message `json:"message"`
+	CallbackQuery struct {
+		ID      string   `json:"id"`
+		Data    string   `json:"data"`
+		User    User     `json:"from"`
+		Message *Message `json:"message"`
+	} `json:"callback_query"`
 }
 
 type UpdateResult struct {
 	Ok     bool     `json:"ok"`
 	Result []Update `json:"result"`
+}
+
+type InlineKeyboardButton struct {
+	Text         string `json:"text"`
+	CallbackData string `json:"callback_data"`
+}
+
+type InlineKeyboardMarkup struct {
+	InlineKeyboard [][]InlineKeyboardButton `json:"inline_keyboard"`
 }
 
 type API struct {
@@ -57,7 +77,27 @@ func (a *API) getUpdates(offset int) (UpdateResult, error) {
 }
 
 func (a *API) sendText(chatID int64, text string) {
-	fmt.Printf("Sending text to chat %d: %s\n", chatID, text)
+	fmt.Printf("Sending text to chat %x: %s\n", chatID, text)
 	jsonData, _ := json.Marshal(map[string]any{"chat_id": chatID, "text": text})
 	http.Post(a.base+"/sendMessage", "application/json", bytes.NewBuffer(jsonData))
+}
+
+func (a *API) sendButtons(chatID int64, text string, buttons [][]InlineKeyboardButton) {
+	fmt.Printf("Sending text buttons to chat %x: %s\n", chatID, text)
+	jsonData, _ := json.Marshal(map[string]any{
+		"chat_id":      chatID,
+		"text":         text,
+		"reply_markup": InlineKeyboardMarkup{InlineKeyboard: buttons},
+	})
+	http.Post(a.base+"/sendMessage", "application/json", bytes.NewBuffer(jsonData))
+}
+
+func (a *API) editMessage(chatID int64, messageID int64, text string, buttons [][]InlineKeyboardButton) {
+	jsonData, _ := json.Marshal(map[string]any{
+		"chat_id":      chatID,
+		"message_id":   messageID,
+		"text":         text,
+		"reply_markup": InlineKeyboardMarkup{InlineKeyboard: buttons},
+	})
+	http.Post(a.base+"/editMessageText", "application/json", bytes.NewBuffer(jsonData))
 }

@@ -83,13 +83,21 @@ func (c *Character) String() string {
 	return fmt.Sprintf("%s: (%s)", c.Name, c.Desc)
 }
 
+func (c *Character) RollModifier(stat string) int {
+	value := c.Stats[stat]
+	if value < 10 {
+		return 0
+	}
+	return (value - 10) / 2
+}
+
 func (c *Character) Roll(dice int) int {
 	if c.pitty > 100 {
 		c.pitty = 0
 		return dice
 	}
 
-	roll := rand.IntN(dice) + 1
+	roll := roll(dice)
 	if roll <= 3 {
 		c.pitty += (4 - roll)
 	} else {
@@ -99,9 +107,14 @@ func (c *Character) Roll(dice int) int {
 	return roll
 }
 
+func roll(dice int) int {
+	return rand.IntN(dice) + 1
+}
+
 type Player struct {
 	Character
-	ID int64
+	ID    int64
+	Ready bool
 }
 
 type Game struct {
