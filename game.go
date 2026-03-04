@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand/v2"
 )
 
 type Item struct {
+	Type       string // Weapon, Armor, Item
 	Name       string
 	Desc       string
 	Weight     float64
@@ -36,6 +38,43 @@ type Character struct {
 	Equipment []any // Weapon, Armor, Item
 }
 
+func (c *Character) UnmarshalJSON(data []byte) error {
+	// Temporary type to avoid infinite recursion
+	type Alias Character
+	aux := &struct {
+		Equipment []json.RawMessage `json:"equipment"`
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	for _, raw := range aux.Equipment {
+		var typeCheck struct {
+			Type string `json:"type"`
+		}
+		json.Unmarshal(raw, &typeCheck)
+
+		if typeCheck.Type == "Weapon" {
+			var w Weapon
+			json.Unmarshal(raw, &w)
+			c.Equipment = append(c.Equipment, w)
+		} else if typeCheck.Type == "Armor" {
+			var a Armor
+			json.Unmarshal(raw, &a)
+			c.Equipment = append(c.Equipment, a)
+		} else {
+			var i Item
+			json.Unmarshal(raw, &i)
+			c.Equipment = append(c.Equipment, i)
+		}
+	}
+	return nil
+}
+
 func (c *Character) IsAlive() bool {
 	return c.HitPoints > 0
 }
@@ -52,7 +91,9 @@ func (c *Character) Roll(dice int) int {
 
 	roll := rand.IntN(dice) + 1
 	if roll <= 3 {
-		c.pitty += roll
+		c.pitty += (4 - roll)
+	} else {
+		c.pitty++
 	}
 
 	return roll

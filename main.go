@@ -7,6 +7,22 @@ import (
 	"time"
 )
 
+const ERR_GAME_NIL = "No hay ninguna campaña en curso, empieza una uniendote con /join"
+const ERR_GAME_STARTED = "La campaña ya ha comenzado, ¡No puedes unirte!"
+const ERR_GAME_TURN = "¡No es tu turno aun!"
+
+const MSG_GAME_STARTED = "¡La campaña ha comenzado!"
+const MSG_GAME_ENDED = "¡La campaña ha terminado!"
+const MSG_HELP = `
+
+/start - Empieza la campaña
+/join <descripcion de tu personaje> - Unirse a la campaña
+/whoami - Información sobre ti
+/roll - Lanza un dado
+
+Nota: <> se utiliza para señalar la ayuda no necesitas ponerlos literalmente
+`
+
 func main() {
 	api := NewAPI(os.Getenv("TOKEN"))
 
@@ -46,7 +62,7 @@ func main() {
 
 			if isCommand("/start") {
 				if game == nil {
-					api.sendText(chatID, "No hay ninguna campaña en curso, empieza una uniendote con /join")
+					api.sendText(chatID, ERR_GAME_NIL)
 					continue
 				}
 
@@ -59,7 +75,7 @@ func main() {
 				if game == nil {
 					games[chatID] = &Game{playerIndex: -1, Players: []Player{}}
 					game = games[chatID]
-					api.sendText(chatID, "Campaña grupal iniciada!")
+					api.sendText(chatID, MSG_GAME_STARTED)
 				}
 
 				if player := game.FindPlayer(message.User.ID); player != nil {
@@ -68,7 +84,7 @@ func main() {
 				}
 
 				if game.Started {
-					api.sendText(chatID, "La campaña ya ha comenzado, ¡No puedes unirte!")
+					api.sendText(chatID, ERR_GAME_STARTED)
 					continue
 				}
 
@@ -87,7 +103,7 @@ func main() {
 				}
 			} else if isCommand("/whoami") {
 				if game == nil {
-					api.sendText(chatID, "No hay ninguna campaña en curso, empieza una uniendote con /join")
+					api.sendText(chatID, ERR_GAME_NIL)
 					continue
 				}
 
@@ -97,14 +113,29 @@ func main() {
 					api.sendText(chatID, "No te has unido a la campaña, unete con /join")
 				}
 			} else if isCommand("/roll") {
-				for _, dice := range []int{4, 6, 8, 10, 12, 20} {
-					api.sendText(chatID, fmt.Sprintf("D%d: %d", dice, roll(dice)))
+				if game == nil {
+					api.sendText(chatID, ERR_GAME_NIL)
+					continue
 				}
-			} else if game != nil && game.Started && game.CurrentPlayer != nil && game.CurrentPlayer.ID == message.User.ID {
+
+				if game.CurrentPlayer != nil && game.CurrentPlayer.ID == message.User.ID {
+					for _, dice := range []int{4, 6, 8, 10, 12, 20} {
+						api.sendText(chatID, fmt.Sprintf("D%d: %d", dice, game.CurrentPlayer.Roll(dice)))
+					}
+				} else {
+					api.sendText(chatID, ERR_GAME_TURN)
+				}
+			} else if isCommand("/help") {
+				api.sendText(chatID, "¡Bienvenido a DnD!")
+				api.sendText(chatID, MSG_HELP)
+			} else if isCommand("/") {
+				api.sendText(chatID, "¡Error, estos son los comandos disponibles!")
+				api.sendText(chatID, MSG_HELP)
+			} else if game != nil && game.CurrentPlayer != nil && game.CurrentPlayer.ID == message.User.ID {
 				api.sendText(chatID, fmt.Sprintf("%s se ha hecho kk encima, y ha muerto...", game.CurrentPlayer.Name))
 				if !game.SetNextPlayer() {
 					game.Started = false
-					api.sendText(chatID, "¡La campaña ha terminado!")
+					api.sendText(chatID, MSG_GAME_ENDED)
 				}
 			}
 		}
