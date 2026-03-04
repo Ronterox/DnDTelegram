@@ -34,13 +34,17 @@ func main() {
 			text := message.Text
 			game := games[chatID]
 
+			isCommand := func(prefix string) bool {
+				return strings.HasPrefix(text, prefix)
+			}
+
 			if update.UpdateID >= offset {
 				offset = update.UpdateID + 1
 			}
 
 			fmt.Printf("Received: %s\n", text)
 
-			if strings.HasPrefix(text, "/start") {
+			if isCommand("/start") {
 				if game == nil {
 					api.sendText(chatID, "No hay ninguna campaña en curso, empieza una uniendote con /join")
 					continue
@@ -51,7 +55,7 @@ func main() {
 
 				api.sendText(chatID, "¡La campaña ha comenzado!")
 				api.sendText(chatID, fmt.Sprintf("%s te encuentras en el baño haciendo kk, que quieres hacer?", game.CurrentPlayer.Name))
-			} else if strings.HasPrefix(text, "/join") {
+			} else if isCommand("/join") {
 				if game == nil {
 					games[chatID] = &Game{playerIndex: -1, Players: []Player{}}
 					game = games[chatID]
@@ -81,7 +85,7 @@ func main() {
 				} else {
 					api.sendText(chatID, "Escribe una descripción para tu personaje /join <descripcion>")
 				}
-			} else if strings.HasPrefix(text, "/whoami") {
+			} else if isCommand("/whoami") {
 				if game == nil {
 					api.sendText(chatID, "No hay ninguna campaña en curso, empieza una uniendote con /join")
 					continue
@@ -92,9 +96,16 @@ func main() {
 				} else {
 					api.sendText(chatID, "No te has unido a la campaña, unete con /join")
 				}
-			} else if game != nil && game.CurrentPlayer != nil && game.CurrentPlayer.ID == message.User.ID {
+			} else if isCommand("/roll") {
+				for _, dice := range []int{4, 6, 8, 10, 12, 20} {
+					api.sendText(chatID, fmt.Sprintf("D%d: %d", dice, roll(dice)))
+				}
+			} else if game != nil && game.Started && game.CurrentPlayer != nil && game.CurrentPlayer.ID == message.User.ID {
 				api.sendText(chatID, fmt.Sprintf("%s se ha hecho kk encima, y ha muerto...", game.CurrentPlayer.Name))
-				api.sendText(chatID, "¡La campaña ha terminado!")
+				if !game.SetNextPlayer() {
+					game.Started = false
+					api.sendText(chatID, "¡La campaña ha terminado!")
+				}
 			}
 		}
 	}

@@ -57,8 +57,7 @@ func (a *API) getUpdates(offset int) (UpdateResult, error) {
 }
 
 func (a *API) sendText(chatID int64, text string) {
-	url := a.base + "/sendMessage"
 	fmt.Printf("Sending text to chat %d: %s\n", chatID, text)
 	jsonData, _ := json.Marshal(map[string]any{"chat_id": chatID, "text": text})
-	http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	http.Post(a.base+"/sendMessage", "application/json", bytes.NewBuffer(jsonData))
 }
