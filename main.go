@@ -50,8 +50,8 @@ const BUTTON_DEFEND = "defend"
 const BUTTON_MAGIC = "magic"
 const BUTTON_NOMAGIC = "nomagic"
 
-func failIfFalse(condition bool, msg string) {
-	if !condition {
+func failIf(condition bool, msg string) {
+	if condition {
 		fmt.Println(msg)
 		panic(msg)
 	}
@@ -126,8 +126,6 @@ func main() {
 					api.sendText(chatID, "Estas listo para la campaña!")
 				}
 
-				finalDecision()
-
 				if buttonKey == BUTTON_FIRST_ITEMS && settingUp[userID] {
 					api.editMessage(chatID, messageID, "Ahora investiguemos tu forma de ser...", [][]InlineKeyboardButton{})
 					go func() {
@@ -179,7 +177,7 @@ func main() {
 						}
 
 						api.editMessage(chatID, messageID, "Veamos que dice el destino...", [][]InlineKeyboardButton{})
-						api.sendText(chatID, fmt.Sprintf("D%d: %d (+%d)!\n\nEso significa %s", 20, dice, player.RollModifier("Constitution"), result))
+						api.sendText(chatID, fmt.Sprintf("D20: %d (+%d Constitution)!\n\nEso significa %s", dice, player.RollModifier("Constitution"), result))
 
 						if !game.SetNextPlayer() {
 							game.Started = false
@@ -220,11 +218,11 @@ func main() {
 					continue
 				}
 
-				failIfFalse(len(game.Players) == 0, "No players in the game")
+				failIf(len(game.Players) == 0, "No players in the game")
 
 				game.Started = true
 
-				failIfFalse(!game.SetNextPlayer(), "Couldn't find next player")
+				failIf(!game.SetNextPlayer(), "Couldn't find next player")
 
 				api.sendText(chatID, "¡La campaña ha comenzado!")
 				api.sendButtons(chatID,

@@ -28,6 +28,7 @@ type Armor struct {
 
 type Character struct {
 	Name      string
+	Race      string
 	Class     string
 	Level     int
 	Desc      string
@@ -58,15 +59,16 @@ func (c *Character) UnmarshalJSON(data []byte) error {
 		}
 		json.Unmarshal(raw, &typeCheck)
 
-		if typeCheck.Type == "Weapon" {
+		switch typeCheck.Type {
+		case "Weapon":
 			var w Weapon
 			json.Unmarshal(raw, &w)
 			c.Equipment = append(c.Equipment, w)
-		} else if typeCheck.Type == "Armor" {
+		case "Armor":
 			var a Armor
 			json.Unmarshal(raw, &a)
 			c.Equipment = append(c.Equipment, a)
-		} else {
+		default:
 			var i Item
 			json.Unmarshal(raw, &i)
 			c.Equipment = append(c.Equipment, i)
@@ -118,13 +120,37 @@ type Player struct {
 }
 
 func NewPlayer(userID int64, name string, description string) *Player {
+	/*
+		Class,Hit Die,Max Value (Level 1)
+		"Wizard, Sorcerer",d6,6
+		"Bard, Cleric, Druid, Monk, Rogue, Warlock",d8,8
+		"Fighter, Paladin, Ranger",d10,10
+		Barbarian,d12,12
+
+		Every level, plus constitution bonus
+	*/
+
 	return &Player{
 		ID: userID,
 		Character: Character{
-			Name:  name,
-			Desc:  description,
+			Name: name,
+			// TODO: AI get race
+			// Proficiencies in equipment/tools, Cool native Skills, Languages, weapons armor,
+			// Lifespan, size, speed
+			// Fixed roll bonuses to certain rolls like Dexterity for Elves +2, Dwarves constitution +2
+			Race: "Human",
+			Desc: description,
+			// TODO: AI get class
 			Class: "None",
-			Level: 3,
+			// TODO: Roll for hitpoints
+			HitPoints: roll(10) + 5,
+			Level:     3,
+			// TODO: Armor depends on equipment given by AI
+			// Rule if is role greater equal than AC then hit
+			// 1 always fails
+			// NATURAL 20 always hits, even is AC is 30 (19+something fails)
+			// Some skills always hit, and some the enemy has to dodge
+			// Always rolls 20 + bonuses
 			Stats: map[string]int{
 				"Strength":     0,
 				"Dexterity":    0,
@@ -159,7 +185,6 @@ func (g *Game) IncrementPlayerIndex() {
 
 func (g *Game) SetNextPlayer() bool {
 	g.IncrementPlayerIndex()
-	fmt.Printf("Looking for index %d", g.playerIndex)
 	for i, player := range g.Players {
 		if i != g.playerIndex {
 			continue
