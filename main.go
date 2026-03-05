@@ -36,6 +36,18 @@ Comandos de Creación de Jugadores:
 Nota: <> se utiliza para señalar la ayuda no necesitas ponerlos literalmente
 `
 
+const BUTTON_FIRST_ITEMS = "first-items"
+const BUTTON_FUCKYOU = "te jodes"
+
+const BUTTON_HIT_CLOSE = "close"
+const BUTTON_HIT_FAR = "far"
+
+const BUTTON_ATTACK = "attack"
+const BUTTON_DEFEND = "defend"
+
+const BUTTON_MAGIC = "magic"
+const BUTTON_NOMAGIC = "nomagic"
+
 func failIfFalse(condition bool, msg string) {
 	if !condition {
 		fmt.Println(msg)
@@ -51,7 +63,7 @@ func main() {
 		return
 	}
 
-	settingUp := make(map[int64]int)
+	settingUp := make(map[int64]bool)
 	games := make(map[int64]*Game)
 
 	offset := 0
@@ -73,6 +85,8 @@ func main() {
 			chatID := message.Chat.ID
 			userID := message.User.ID
 
+			fmt.Printf("%v, %d\n", settingUp, userID)
+
 			text := message.Text
 			game := games[chatID]
 
@@ -86,9 +100,97 @@ func main() {
 
 			fmt.Printf("Received: (text: %s), (button: %s)\n", text, update.CallbackQuery.Data)
 
-			if update.CallbackQuery.Data != "" {
-				api.editMessage(callback.Message.Chat.ID, callback.Message.ID, callback.Data, [][]InlineKeyboardButton{})
-				fmt.Printf("Edited message %d\n", callback.Message.ID)
+			// If is a button callback
+			if buttonKey := callback.Data; buttonKey != "" {
+				messageID := callback.Message.ID
+				chatID := callback.Message.Chat.ID
+				userID := callback.User.ID
+				game := games[chatID]
+
+				fmt.Printf("Pressing button %s, %d\n", buttonKey, userID)
+
+				finalDecision := func() {
+					time.Sleep(time.Second * 2)
+					api.sendText(chatID, "Ahora en base a tus decisiones, habilidades e historia de ti eres...")
+
+					api.sendText(chatID, "<Inserta AI analizando a tu personaje>")
+					api.sendText(chatID, "<Inserta mostrat toda tu informacion de personaje>")
+					delete(settingUp, userID)
+
+					player := game.FindPlayer(userID)
+					player.Ready = true
+
+					api.sendText(chatID, "Estas listo para la campaña!")
+				}
+
+				if buttonKey == BUTTON_FIRST_ITEMS && settingUp[userID] {
+					api.editMessage(chatID, messageID, "Ahora investiguemos tu forma de ser...", [][]InlineKeyboardButton{})
+					go func() {
+						time.Sleep(time.Second * 2)
+						api.sendButtons(chatID, "¿Te gusta golpear los enemigos de cerca o de lejos?", [][]InlineKeyboardButton{
+							{
+								{
+									Text:         "Cerca",
+									CallbackData: BUTTON_HIT_CLOSE,
+								},
+								{
+									Text:         "Lejos",
+									CallbackData: BUTTON_HIT_FAR,
+								},
+							},
+						})
+					}()
+				} else if buttonKey == BUTTON_HIT_CLOSE && settingUp[userID] {
+					api.editMessage(chatID, messageID, "Eres alguien duro no?", [][]InlineKeyboardButton{})
+					go func() {
+						time.Sleep(time.Second * 2)
+						api.sendButtons(chatID, "¿Defender o atacar?", [][]InlineKeyboardButton{
+							{
+								{
+									Text:         "Defensa",
+									CallbackData: BUTTON_DEFEND,
+								},
+								{
+									Text:         "Ataque",
+									CallbackData: BUTTON_ATTACK,
+								},
+							},
+						})
+					}()
+				} else if buttonKey == BUTTON_HIT_FAR && settingUp[userID] {
+					api.editMessage(chatID, messageID, "Si se puede por que no cierto?", [][]InlineKeyboardButton{})
+					go func() {
+						time.Sleep(time.Second * 2)
+						api.sendButtons(chatID, "¿Que opinas de la magia?", [][]InlineKeyboardButton{
+							{
+								{
+									Text:         "Me parece una buena idea",
+									CallbackData: BUTTON_MAGIC,
+								},
+								{
+									Text:         "Es una mala idea",
+									CallbackData: BUTTON_NOMAGIC,
+								},
+							},
+						})
+					}()
+				} else if buttonKey == BUTTON_MAGIC && settingUp[userID] {
+					api.editMessage(chatID, messageID, "¡Siempre mola verdad!", [][]InlineKeyboardButton{})
+					go finalDecision()
+				} else if buttonKey == BUTTON_NOMAGIC && settingUp[userID] {
+					api.editMessage(chatID, messageID, "¡Yo tambien opino que es para pussies!", [][]InlineKeyboardButton{})
+					go finalDecision()
+				} else if buttonKey == BUTTON_DEFEND && settingUp[userID] {
+					api.editMessage(chatID, messageID, "Hay que proteger lo que queremos despues de todo", [][]InlineKeyboardButton{})
+					go finalDecision()
+				} else if buttonKey == BUTTON_ATTACK && settingUp[userID] {
+					api.editMessage(chatID, messageID, "La mejor defensa es el mejor ataque", [][]InlineKeyboardButton{})
+					go finalDecision()
+				} else {
+					api.editMessage(chatID, messageID, buttonKey, [][]InlineKeyboardButton{})
+				}
+
+				fmt.Printf("Edited message %d\n", messageID)
 				continue
 			}
 
@@ -187,7 +289,7 @@ func main() {
 					continue
 				}
 
-				if settingUp[userID] != 0 {
+				if settingUp[userID] {
 					api.sendText(chatID, "Termina de configurar tu personaje")
 					continue
 				}
@@ -198,13 +300,12 @@ func main() {
 						continue
 					}
 
-					settingUp[chatID] = 1
+					settingUp[userID] = true
 					api.sendText(chatID, "Veamos que destino depara para tu fisico y fuerza mental...")
 
 					go func() {
 						for key := range player.Character.Stats {
 							api.sendText(chatID, fmt.Sprintf("En cuanto a tu %s...", key))
-							time.Sleep(time.Second * 5)
 
 							rolls := make([]int, 4)
 							smallest := 100
@@ -215,6 +316,12 @@ func main() {
 								smallest = min(rolls[i], smallest)
 								total += rolls[i]
 
+								if i == 3 {
+									time.Sleep(time.Second * 3)
+								} else {
+									time.Sleep(time.Second * 1)
+								}
+
 								api.sendText(chatID, fmt.Sprintf("%d", rolls[i]))
 							}
 
@@ -223,24 +330,28 @@ func main() {
 
 							if result > 16 {
 								api.sendText(chatID, fmt.Sprintf("¡Tu %s es de %d, en verdad que eres habilidoso!", key, result))
-							} else if result > 12 {
+							} else if result > 14 {
+								api.sendText(chatID, fmt.Sprintf("¡Tu %s es de %d, estas sobre el promedio!", key, result))
+							} else if result > 9 {
 								api.sendText(chatID, fmt.Sprintf("¡Tu %s es de %d, un valor decente!", key, result))
-							} else if result > 8 {
+							} else if result > 6 {
 								api.sendText(chatID, fmt.Sprintf("Tu %s es de %d, un poco debajo del promedio...", key, result))
 							} else {
 								api.sendText(chatID, fmt.Sprintf("Tu %s es de %d... oof, que mala suerte no?", key, result))
 							}
+
+							time.Sleep(time.Second * 3)
 						}
 
 						api.sendButtons(chatID, "Estas satisfecho con este resultado?", [][]InlineKeyboardButton{
 							{
 								{
 									Text:         "Si",
-									CallbackData: "ready",
+									CallbackData: BUTTON_FIRST_ITEMS,
 								},
 								{
 									Text:         "No",
-									CallbackData: "configure",
+									CallbackData: BUTTON_FUCKYOU,
 								},
 							},
 						})
