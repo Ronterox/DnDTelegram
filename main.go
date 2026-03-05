@@ -89,6 +89,7 @@ func main() {
 			if update.CallbackQuery.Data != "" {
 				api.editMessage(callback.Message.Chat.ID, callback.Message.ID, callback.Data, [][]InlineKeyboardButton{})
 				fmt.Printf("Edited message %d\n", callback.Message.ID)
+				continue
 			}
 
 			if isCommand("/start") {
@@ -138,6 +139,14 @@ func main() {
 						Character: Character{
 							Name: message.User.FirstName,
 							Desc: description,
+							Stats: map[string]int{
+								"Strength":     0,
+								"Dexterity":    0,
+								"Constitution": 0,
+								"Intelligence": 0,
+								"Wisdom":       0,
+								"Charisma":     0,
+							},
 						},
 					}
 					game.Players = append(game.Players, newPlayer)
@@ -188,8 +197,54 @@ func main() {
 						api.sendText(chatID, fmt.Sprintf("¡%s ya está listo para jugar!", player.Name))
 						continue
 					}
+
 					settingUp[chatID] = 1
-					api.sendButtons(chatID, "Empieza a configurar tu personaje", [][]InlineKeyboardButton{})
+					api.sendText(chatID, "Veamos que destino depara para tu fisico y fuerza mental...")
+
+					go func() {
+						for key := range player.Character.Stats {
+							api.sendText(chatID, fmt.Sprintf("En cuanto a tu %s...", key))
+							time.Sleep(time.Second * 5)
+
+							rolls := make([]int, 4)
+							smallest := 100
+							total := 0
+
+							for i := range 4 {
+								rolls[i] = player.Roll(6)
+								smallest = min(rolls[i], smallest)
+								total += rolls[i]
+
+								api.sendText(chatID, fmt.Sprintf("%d", rolls[i]))
+							}
+
+							result := total - smallest
+							player.Character.Stats[key] = result
+
+							if result > 16 {
+								api.sendText(chatID, fmt.Sprintf("¡Tu %s es de %d, en verdad que eres habilidoso!", key, result))
+							} else if result > 12 {
+								api.sendText(chatID, fmt.Sprintf("¡Tu %s es de %d, un valor decente!", key, result))
+							} else if result > 8 {
+								api.sendText(chatID, fmt.Sprintf("Tu %s es de %d, un poco debajo del promedio...", key, result))
+							} else {
+								api.sendText(chatID, fmt.Sprintf("Tu %s es de %d... oof, que mala suerte no?", key, result))
+							}
+						}
+
+						api.sendButtons(chatID, "Estas satisfecho con este resultado?", [][]InlineKeyboardButton{
+							{
+								{
+									Text:         "Si",
+									CallbackData: "ready",
+								},
+								{
+									Text:         "No",
+									CallbackData: "configure",
+								},
+							},
+						})
+					}()
 				} else {
 					api.sendText(chatID, ERR_JOINED)
 				}
