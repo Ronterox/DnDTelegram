@@ -117,17 +117,37 @@ type Player struct {
 	Ready bool
 }
 
+func NewPlayer(userID int64, name string, description string) *Player {
+	return &Player{
+		ID: userID,
+		Character: Character{
+			Name:  name,
+			Desc:  description,
+			Class: "None",
+			Level: 3,
+			Stats: map[string]int{
+				"Strength":     0,
+				"Dexterity":    0,
+				"Constitution": 0,
+				"Intelligence": 0,
+				"Wisdom":       0,
+				"Charisma":     0,
+			},
+		},
+	}
+}
+
 type Game struct {
 	Started       bool
 	playerIndex   int
 	CurrentPlayer *Player
-	Players       []Player
+	Players       []*Player
 }
 
 func (g *Game) FindPlayer(id int64) *Player {
 	for _, player := range g.Players {
 		if player.ID == id {
-			return &player
+			return player
 		}
 	}
 	return nil
@@ -139,13 +159,14 @@ func (g *Game) IncrementPlayerIndex() {
 
 func (g *Game) SetNextPlayer() bool {
 	g.IncrementPlayerIndex()
+	fmt.Printf("Looking for index %d", g.playerIndex)
 	for i, player := range g.Players {
 		if i != g.playerIndex {
 			continue
 		}
 
 		if player.Character.IsAlive() {
-			g.CurrentPlayer = &player
+			g.CurrentPlayer = player
 			return true
 		}
 
