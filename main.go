@@ -65,6 +65,7 @@ func main() {
 		return
 	}
 
+	// TODO: Make this a state enum inside of player
 	settingUp := make(map[int64]bool)
 	deciding := make(map[int64]bool)
 	games := make(map[int64]*Game)

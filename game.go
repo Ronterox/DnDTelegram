@@ -32,7 +32,8 @@ type Character struct {
 	Class     string
 	Level     int
 	Desc      string
-	Stats     map[string]int // Strength, Dexterity, Constitution, Intelligence, Wisdom, and Charisma
+	Stats     map[string]int    // Strength, Dexterity, Constitution, Intelligence, Wisdom, and Charisma
+	Skills    map[string]string // Acrobatics, Animal Handling, Arcana, Athletics, Deception, History, Insight,
 	Armor     int
 	HitPoints int
 	pitty     int
