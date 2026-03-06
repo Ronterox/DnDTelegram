@@ -15,7 +15,7 @@ const ERR_GAME_TURN = "¡No es tu turno aun!"
 const ERR_READY = "¡%s no está listo para jugar utiliza /ready para marcarlo!"
 const ERR_JOINED = "No te has unido a la campaña, unete con /join"
 
-const MSG_GAME_STARTED = "¡Se ha creado una campaña nueva!"
+const MSG_GAME_STARTED = "¡Una nueva campaña ha sido iniciada!"
 const MSG_GAME_ENDED = "¡La campaña ha terminado!"
 const MSG_JOINED = `
 ¡Te has unido a la campaña, bienvenido %s!
@@ -83,18 +83,19 @@ func main() {
 			var player *Player
 			var game *Game
 
+			fmt.Printf("Update: %+v\n", update)
+
 			message := update.Message
 			callback := update.CallbackQuery
 
 			chatID := message.Chat.ID
 			userID := message.User.ID
 
-			fmt.Printf("user: %d\n", userID)
-
 			text := message.Text
 			if game = games[chatID]; game != nil {
 				if player = game.FindPlayer(userID); player != nil {
 					state = player.State
+					fmt.Printf("Player found: %+v\n", player)
 				}
 			}
 
@@ -104,8 +105,6 @@ func main() {
 
 			// If is a button callback
 			if buttonKey := callback.Data; buttonKey != "" {
-				fmt.Printf("Pressing button %s, %d\n", buttonKey, userID)
-
 				messageID := callback.Message.ID
 				chatID := callback.Message.Chat.ID
 				userID := callback.User.ID
@@ -113,7 +112,7 @@ func main() {
 				if game = games[chatID]; game != nil {
 					if player = game.FindPlayer(userID); player != nil {
 						state = player.State
-						fmt.Printf("Player state: %d\n", state)
+						fmt.Printf("Player found: %+v\n", player)
 					}
 				}
 
@@ -182,7 +181,7 @@ func main() {
 
 					var result string
 
-					dice := player.Roll(20)
+					dice := game.CurrentPlayer.Roll(20)
 					if dice < 13 {
 						result = fmt.Sprintf("%s se ha hecho kk encima, y ha muerto...", game.CurrentPlayer.Name)
 					} else {
@@ -190,7 +189,7 @@ func main() {
 					}
 
 					api.editMessage(chatID, messageID, "Veamos que dice el destino...", [][]InlineKeyboardButton{})
-					api.sendText(chatID, fmt.Sprintf("D20: %d (+%d Constitution)!\n\nEso significa %s", dice, player.RollModifier("Constitution"), result))
+					api.sendText(chatID, fmt.Sprintf("D20: %d (+%d Constitution)!\n\nEso significa %s", dice, game.CurrentPlayer.RollModifier("Constitution"), result))
 
 					if !game.SetNextPlayer() {
 						game.Started = false
@@ -198,6 +197,8 @@ func main() {
 					} else {
 						api.sendText(chatID, fmt.Sprintf("%s es ahora tu turno!", game.CurrentPlayer.Name))
 					}
+
+					game.CurrentPlayer.State = StateReady
 				default:
 					api.editMessage(chatID, messageID, buttonKey, [][]InlineKeyboardButton{})
 				}
@@ -242,15 +243,15 @@ func main() {
 						{Text: "Skills", CallbackData: "skills"},
 					}})
 			case "/join":
+				if player != nil {
+					api.sendText(chatID, fmt.Sprintf("¡Ya eres un jugador! %+v", player))
+					continue
+				}
+
 				if game == nil {
 					games[chatID] = &Game{playerIndex: -1, Players: []*Player{}}
 					game = games[chatID]
 					api.sendText(chatID, MSG_GAME_STARTED)
-				}
-
-				if player := game.FindPlayer(userID); player != nil {
-					api.sendText(chatID, fmt.Sprintf("¡Ya eres un jugador! %+v", player))
-					continue
 				}
 
 				if game.Started {
@@ -273,7 +274,7 @@ func main() {
 					continue
 				}
 
-				if player := game.FindPlayer(userID); player != nil {
+				if player != nil {
 					api.sendText(chatID, fmt.Sprintf("Eres %+v", player))
 				} else {
 					api.sendText(chatID, ERR_JOINED)
@@ -306,13 +307,13 @@ func main() {
 					continue
 				}
 
-				if player := game.FindPlayer(userID); player != nil {
+				if player != nil {
 					if state == StateReady {
 						api.sendText(chatID, fmt.Sprintf("¡%s ya está listo para jugar!", player.Name))
 						continue
 					}
 
-					state = StateSettingUp
+					player.State = StateSettingUp
 					api.sendText(chatID, "Veamos que destino depara para tu fisico y fuerza mental...")
 
 					go func() {
@@ -372,7 +373,7 @@ func main() {
 			default:
 				if game != nil && game.Started {
 					if game.CurrentPlayer != nil && game.CurrentPlayer.ID == userID && state != StateDeciding {
-						state = StateDeciding
+						game.CurrentPlayer.State = StateDeciding
 						api.sendButtons(chatID,
 							"Estas a punto de cagarte encima, rollea Constitucion para aguantar las ganas, o decide algo mas!",
 							[][]InlineKeyboardButton{{{Text: "Roll", CallbackData: BUTTON_ROLL_CONSTITUTION}}})
