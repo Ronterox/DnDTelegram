@@ -36,8 +36,8 @@ type Character struct {
 	Skills    map[string]string // Acrobatics, Animal Handling, Arcana, Athletics, Deception, History, Insight,
 	Armor     int
 	HitPoints int
-	pitty     int
 	Equipment []any // Weapon, Armor, Item
+	pitty     int
 }
 
 func (c *Character) UnmarshalJSON(data []byte) error {
@@ -114,10 +114,19 @@ func roll(dice int) int {
 	return rand.IntN(dice) + 1
 }
 
+type PlayerState int
+
+const (
+	StateNone PlayerState = iota
+	StateSettingUp
+	StateDeciding
+	StateReady
+)
+
 type Player struct {
 	Character
 	ID    int64
-	Ready bool
+	State PlayerState
 }
 
 func NewPlayer(userID int64, name string, description string) *Player {

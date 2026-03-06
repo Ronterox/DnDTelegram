@@ -65,11 +65,7 @@ func main() {
 		return
 	}
 
-	// TODO: Make this a state enum inside of player
-	settingUp := make(map[int64]bool)
-	deciding := make(map[int64]bool)
 	games := make(map[int64]*Game)
-
 	offset := 0
 
 	fmt.Printf("Bot started with token ending in %s... Press Ctrl+C to stop.\n", api.token[len(api.token)-8:])
@@ -83,33 +79,43 @@ func main() {
 		}
 
 		for _, update := range updates.Result {
+			var state PlayerState
+			var player *Player
+			var game *Game
+
 			message := update.Message
 			callback := update.CallbackQuery
 
 			chatID := message.Chat.ID
 			userID := message.User.ID
 
-			fmt.Printf("%v, %d\n", settingUp, userID)
+			fmt.Printf("user: %d\n", userID)
 
 			text := message.Text
-			game := games[chatID]
-
-			isCommand := func(prefix string) bool {
-				return strings.HasPrefix(text, prefix)
+			if game = games[chatID]; game != nil {
+				if player = game.FindPlayer(userID); player != nil {
+					state = player.State
+				}
 			}
 
 			if update.UpdateID >= offset {
 				offset = update.UpdateID + 1
 			}
 
-			fmt.Printf("Received: (text: %s), (button: %s)\n", text, update.CallbackQuery.Data)
-
 			// If is a button callback
 			if buttonKey := callback.Data; buttonKey != "" {
+				fmt.Printf("Pressing button %s, %d\n", buttonKey, userID)
+
 				messageID := callback.Message.ID
 				chatID := callback.Message.Chat.ID
 				userID := callback.User.ID
-				game := games[chatID]
+
+				if game = games[chatID]; game != nil {
+					if player = game.FindPlayer(userID); player != nil {
+						state = player.State
+						fmt.Printf("Player state: %d\n", state)
+					}
+				}
 
 				fmt.Printf("Pressing button %s, %d\n", buttonKey, userID)
 
@@ -119,79 +125,80 @@ func main() {
 
 					api.sendText(chatID, "<Inserta AI analizando a tu personaje>")
 					api.sendText(chatID, "<Inserta mostrar toda tu informacion de personaje>")
-					delete(settingUp, userID)
 
-					player := game.FindPlayer(userID)
-					player.Ready = true
+					failIf(player == nil, "Player not found")
+					player.State = StateReady
 
 					api.sendText(chatID, "Estas listo para la campaña!")
 				}
 
-				if buttonKey == BUTTON_FIRST_ITEMS && settingUp[userID] {
-					api.editMessage(chatID, messageID, "Ahora investiguemos tu forma de ser...", [][]InlineKeyboardButton{})
-					go func() {
-						time.Sleep(time.Second * 2)
-						api.sendButtons(chatID, "¿Te gusta golpear los enemigos de cerca o de lejos?", [][]InlineKeyboardButton{{
-							{Text: "Cerca", CallbackData: BUTTON_HIT_CLOSE},
-							{Text: "Lejos", CallbackData: BUTTON_HIT_FAR},
-						}})
-					}()
-				} else if buttonKey == BUTTON_HIT_CLOSE && settingUp[userID] {
-					api.editMessage(chatID, messageID, "Eres alguien duro no?", [][]InlineKeyboardButton{})
-					go func() {
-						time.Sleep(time.Second * 2)
-						api.sendButtons(chatID, "¿Defender o atacar?", [][]InlineKeyboardButton{{
-							{Text: "Defensa", CallbackData: BUTTON_DEFEND},
-							{Text: "Ataque", CallbackData: BUTTON_ATTACK},
-						}})
-					}()
-				} else if buttonKey == BUTTON_HIT_FAR && settingUp[userID] {
-					api.editMessage(chatID, messageID, "Si se puede por que no cierto?", [][]InlineKeyboardButton{})
-					go func() {
-						time.Sleep(time.Second * 2)
-						api.sendButtons(chatID, "¿Que opinas de la magia?", [][]InlineKeyboardButton{{
-							{Text: "Me parece una buena idea", CallbackData: BUTTON_MAGIC},
-							{Text: "Es una mala idea", CallbackData: BUTTON_NOMAGIC},
-						}})
-					}()
-				} else if buttonKey == BUTTON_MAGIC && settingUp[userID] {
-					api.editMessage(chatID, messageID, "¡Siempre mola verdad!", [][]InlineKeyboardButton{})
-					go finalDecision()
-				} else if buttonKey == BUTTON_NOMAGIC && settingUp[userID] {
-					api.editMessage(chatID, messageID, "¡Yo tambien opino que es para pussies!", [][]InlineKeyboardButton{})
-					go finalDecision()
-				} else if buttonKey == BUTTON_DEFEND && settingUp[userID] {
-					api.editMessage(chatID, messageID, "Hay que proteger lo que queremos despues de todo", [][]InlineKeyboardButton{})
-					go finalDecision()
-				} else if buttonKey == BUTTON_ATTACK && settingUp[userID] {
-					api.editMessage(chatID, messageID, "La mejor defensa es el mejor ataque", [][]InlineKeyboardButton{})
-					go finalDecision()
-				} else if buttonKey == BUTTON_ROLL_CONSTITUTION {
-					if player := game.FindPlayer(userID); player != nil {
-						var result string
-
-						dice := player.Roll(20)
-						if dice < 13 {
-							result = fmt.Sprintf("%s se ha hecho kk encima, y ha muerto...", game.CurrentPlayer.Name)
-						} else {
-							result = fmt.Sprintf("%s se ha podido aguantar las ganas, ha sobrevivido por ahora...", game.CurrentPlayer.Name)
-						}
-
-						api.editMessage(chatID, messageID, "Veamos que dice el destino...", [][]InlineKeyboardButton{})
-						api.sendText(chatID, fmt.Sprintf("D20: %d (+%d Constitution)!\n\nEso significa %s", dice, player.RollModifier("Constitution"), result))
-
-						if !game.SetNextPlayer() {
-							game.Started = false
-							api.sendText(chatID, MSG_GAME_ENDED)
-						} else {
-							api.sendText(chatID, fmt.Sprintf("%s es ahora tu turno!", game.CurrentPlayer.Name))
-						}
-
-						delete(deciding, userID)
-					} else {
-						api.editMessage(chatID, messageID, buttonKey, [][]InlineKeyboardButton{})
+				switch state {
+				case StateSettingUp:
+					switch buttonKey {
+					case BUTTON_FIRST_ITEMS:
+						api.editMessage(chatID, messageID, "Ahora investiguemos tu forma de ser...", [][]InlineKeyboardButton{})
+						go func() {
+							time.Sleep(time.Second * 2)
+							api.sendButtons(chatID, "¿Te gusta golpear los enemigos de cerca o de lejos?", [][]InlineKeyboardButton{{
+								{Text: "Cerca", CallbackData: BUTTON_HIT_CLOSE},
+								{Text: "Lejos", CallbackData: BUTTON_HIT_FAR},
+							}})
+						}()
+					case BUTTON_HIT_CLOSE:
+						api.editMessage(chatID, messageID, "Eres alguien duro no?", [][]InlineKeyboardButton{})
+						go func() {
+							time.Sleep(time.Second * 2)
+							api.sendButtons(chatID, "¿Defender o atacar?", [][]InlineKeyboardButton{{
+								{Text: "Defensa", CallbackData: BUTTON_DEFEND},
+								{Text: "Ataque", CallbackData: BUTTON_ATTACK},
+							}})
+						}()
+					case BUTTON_HIT_FAR:
+						api.editMessage(chatID, messageID, "Si se puede por que no cierto?", [][]InlineKeyboardButton{})
+						go func() {
+							time.Sleep(time.Second * 2)
+							api.sendButtons(chatID, "¿Que opinas de la magia?", [][]InlineKeyboardButton{{
+								{Text: "Me parece una buena idea", CallbackData: BUTTON_MAGIC},
+								{Text: "Es una mala idea", CallbackData: BUTTON_NOMAGIC},
+							}})
+						}()
+					case BUTTON_MAGIC:
+						api.editMessage(chatID, messageID, "¡Siempre mola verdad!", [][]InlineKeyboardButton{})
+						go finalDecision()
+					case BUTTON_NOMAGIC:
+						api.editMessage(chatID, messageID, "¡Yo tambien opino que es para pussies!", [][]InlineKeyboardButton{})
+						go finalDecision()
+					case BUTTON_DEFEND:
+						api.editMessage(chatID, messageID, "Hay que proteger lo que queremos despues de todo", [][]InlineKeyboardButton{})
+						go finalDecision()
+					case BUTTON_ATTACK:
+						api.editMessage(chatID, messageID, "La mejor defensa es el mejor ataque", [][]InlineKeyboardButton{})
+						go finalDecision()
 					}
-				} else {
+				case StateDeciding:
+					if buttonKey != BUTTON_ROLL_CONSTITUTION {
+						continue
+					}
+
+					var result string
+
+					dice := player.Roll(20)
+					if dice < 13 {
+						result = fmt.Sprintf("%s se ha hecho kk encima, y ha muerto...", game.CurrentPlayer.Name)
+					} else {
+						result = fmt.Sprintf("%s se ha podido aguantar las ganas, ha sobrevivido por ahora...", game.CurrentPlayer.Name)
+					}
+
+					api.editMessage(chatID, messageID, "Veamos que dice el destino...", [][]InlineKeyboardButton{})
+					api.sendText(chatID, fmt.Sprintf("D20: %d (+%d Constitution)!\n\nEso significa %s", dice, player.RollModifier("Constitution"), result))
+
+					if !game.SetNextPlayer() {
+						game.Started = false
+						api.sendText(chatID, MSG_GAME_ENDED)
+					} else {
+						api.sendText(chatID, fmt.Sprintf("%s es ahora tu turno!", game.CurrentPlayer.Name))
+					}
+				default:
 					api.editMessage(chatID, messageID, buttonKey, [][]InlineKeyboardButton{})
 				}
 
@@ -199,9 +206,10 @@ func main() {
 				continue
 			}
 
-			if isCommand("/start") {
-				fmt.Println("Running start")
+			command, rest, hasArgs := strings.Cut(text, " ")
 
+			switch command {
+			case "/start":
 				if game == nil {
 					api.sendText(chatID, ERR_GAME_NIL)
 					continue
@@ -209,7 +217,7 @@ func main() {
 
 				playerNotReady := false
 				for _, player := range game.Players {
-					if !player.Ready {
+					if player.State != StateReady {
 						api.sendText(chatID, fmt.Sprintf(ERR_READY, player.Name))
 						playerNotReady = true
 					}
@@ -233,9 +241,7 @@ func main() {
 						{Text: "Stats", CallbackData: "stats"},
 						{Text: "Skills", CallbackData: "skills"},
 					}})
-			} else if isCommand("/join") {
-				fmt.Println("Running join")
-
+			case "/join":
 				if game == nil {
 					games[chatID] = &Game{playerIndex: -1, Players: []*Player{}}
 					game = games[chatID]
@@ -252,16 +258,14 @@ func main() {
 					continue
 				}
 
-				if description := strings.TrimSpace(strings.Replace(text, "/join", "", 1)); description != "" {
-					newPlayer := NewPlayer(userID, message.User.FirstName, description)
+				if hasArgs {
+					newPlayer := NewPlayer(userID, message.User.FirstName, rest)
 					game.Players = append(game.Players, newPlayer)
-					api.sendButtons(chatID, fmt.Sprintf(MSG_JOINED, newPlayer.Name), [][]InlineKeyboardButton{{
-						{Text: "ready", CallbackData: "ready"},
-					}})
+					api.sendText(chatID, fmt.Sprintf(MSG_JOINED, newPlayer.Name))
 				} else {
 					api.sendText(chatID, "Escribe una descripción para tu personaje /join <descripcion>")
 				}
-			} else if isCommand("/whoami") {
+			case "/whoami":
 				fmt.Println("Running whoami")
 
 				if game == nil {
@@ -274,7 +278,7 @@ func main() {
 				} else {
 					api.sendText(chatID, ERR_JOINED)
 				}
-			} else if isCommand("/roll") {
+			case "/roll":
 				fmt.Println("Running roll")
 
 				if game == nil {
@@ -289,7 +293,7 @@ func main() {
 				} else {
 					api.sendText(chatID, ERR_GAME_TURN)
 				}
-			} else if isCommand("/ready") {
+			case "/ready":
 				fmt.Println("Running ready")
 
 				if game == nil {
@@ -297,18 +301,18 @@ func main() {
 					continue
 				}
 
-				if settingUp[userID] {
+				if state == StateSettingUp {
 					api.sendText(chatID, "Termina de configurar tu personaje")
 					continue
 				}
 
 				if player := game.FindPlayer(userID); player != nil {
-					if player.Ready {
+					if state == StateReady {
 						api.sendText(chatID, fmt.Sprintf("¡%s ya está listo para jugar!", player.Name))
 						continue
 					}
 
-					settingUp[userID] = true
+					state = StateSettingUp
 					api.sendText(chatID, "Veamos que destino depara para tu fisico y fuerza mental...")
 
 					go func() {
@@ -324,13 +328,13 @@ func main() {
 								smallest = min(rolls[i], smallest)
 								total += rolls[i]
 
-								if i == 3 {
-									time.Sleep(time.Second * 3)
-								} else {
-									time.Sleep(time.Second * 1)
-								}
-
-								api.sendText(chatID, fmt.Sprintf("%d", rolls[i]))
+								// if i == 3 {
+								// 	time.Sleep(time.Second * 3)
+								// } else {
+								// 	time.Sleep(time.Second * 1)
+								// }
+								//
+								// api.sendText(chatID, fmt.Sprintf("%d", rolls[i]))
 							}
 
 							result := total - smallest
@@ -348,7 +352,7 @@ func main() {
 								api.sendText(chatID, fmt.Sprintf("Tu %s es de %d... oof, que mala suerte no?", key, result))
 							}
 
-							time.Sleep(time.Second * 3)
+							// time.Sleep(time.Second * 3)
 						}
 
 						api.sendButtons(chatID, "Estas satisfecho con este resultado?", [][]InlineKeyboardButton{{
@@ -359,18 +363,20 @@ func main() {
 				} else {
 					api.sendText(chatID, ERR_JOINED)
 				}
-			} else if isCommand("/help") {
+			case "/help":
 				api.sendText(chatID, "¡Bienvenido a DnD!")
 				api.sendText(chatID, MSG_HELP)
-			} else if isCommand("/") {
+			case "/":
 				api.sendText(chatID, "¡Error, estos son los comandos disponibles!")
 				api.sendText(chatID, MSG_HELP)
-			} else if game != nil && game.Started {
-				if game.CurrentPlayer != nil && game.CurrentPlayer.ID == userID && !deciding[userID] {
-					deciding[userID] = true
-					api.sendButtons(chatID,
-						"Estas a punto de cagarte encima, rollea Constitucion para aguantar las ganas, o decide algo mas!",
-						[][]InlineKeyboardButton{{{Text: "Roll", CallbackData: BUTTON_ROLL_CONSTITUTION}}})
+			default:
+				if game != nil && game.Started {
+					if game.CurrentPlayer != nil && game.CurrentPlayer.ID == userID && state != StateDeciding {
+						state = StateDeciding
+						api.sendButtons(chatID,
+							"Estas a punto de cagarte encima, rollea Constitucion para aguantar las ganas, o decide algo mas!",
+							[][]InlineKeyboardButton{{{Text: "Roll", CallbackData: BUTTON_ROLL_CONSTITUTION}}})
+					}
 				}
 			}
 		}
