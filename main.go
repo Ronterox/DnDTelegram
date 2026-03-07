@@ -184,10 +184,10 @@ func main() {
 				finalDecision := func() {
 					failIf(player == nil, "Player not found")
 
-					api.sendText(chatID, player.Character.String())
+					api.sendText(chatID, player.toString())
 					api.sendText(chatID, "Ahora en base a tus decisiones, habilidades e historia de ti eres...")
 
-					message, err := queryAI(game.SessionID, JOIN_PROMPT+fmt.Sprintf("New Player:\n%s", &player.Character))
+					message, err := queryAI(game.SessionID, JOIN_PROMPT+fmt.Sprintf("New Player:\n%s", player.toString()))
 					if err != nil {
 						api.sendText(chatID, err.Error())
 						return
@@ -404,7 +404,7 @@ func main() {
 					api.sendText(chatID, "Veamos que destino depara para tu fisico y fuerza mental...")
 
 					go func() {
-						for key := range player.Character.Stats {
+						for key := range player.Stats {
 							api.sendText(chatID, fmt.Sprintf("En cuanto a tu %s...", key))
 
 							rolls := make([]int, 4)
@@ -426,7 +426,7 @@ func main() {
 							}
 
 							result := total - smallest
-							player.Character.Stats[key] = result
+							player.Stats[key] = result
 
 							if result > 16 {
 								api.sendText(chatID, fmt.Sprintf("¡Tu %s es de %d, en verdad que eres habilidoso!", key, result))

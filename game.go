@@ -83,7 +83,7 @@ func (c *Character) IsAlive() bool {
 	return c.HitPoints > 0
 }
 
-func (c *Character) String() string {
+func (c *Character) toString() string {
 	var output bytes.Buffer
 
 	output.WriteString(fmt.Sprintf("%s: %s\n", c.Name, c.Desc))
