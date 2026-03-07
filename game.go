@@ -86,9 +86,9 @@ func (c *Character) IsAlive() bool {
 func (c *Character) String() string {
 	var output bytes.Buffer
 
-	output.WriteString(fmt.Sprintf("%s: %s", c.Name, c.Desc))
+	output.WriteString(fmt.Sprintf("%s: %s\n", c.Name, c.Desc))
 	for key, value := range c.Stats {
-		output.WriteString(fmt.Sprintf("\n%s: %d", key, value))
+		output.WriteString(fmt.Sprintf("%s: %d\n", key, value))
 	}
 
 	return output.String()

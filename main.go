@@ -56,6 +56,8 @@ We will start creating the player characters before starting the game.
 `
 const START_GAME_PROMPT = `
 All players have been created, now it's time to start the game.
+
+Do not ask questions! Start right away with the information you have.
 `
 const JOIN_PROMPT = `
 A new player has joined, say something short to them as a welcome, do not extend too much.
