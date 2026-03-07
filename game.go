@@ -134,7 +134,7 @@ type PlayerState int
 const (
 	StateNone PlayerState = iota
 	StateSettingUp
-	StateDeciding
+	StatePaused
 	StateReady
 )
 
