@@ -311,8 +311,11 @@ func main() {
 
 				api.sendButtons(chatID, message,
 					[][]InlineKeyboardButton{{
+						// TODO: Inventory view
 						{Text: "Inventario", CallbackData: "inventory"},
+						// TODO: Stats view
 						{Text: "Stats", CallbackData: "stats"},
+						// TODO: Skills view
 						{Text: "Skills", CallbackData: "skills"},
 					}})
 			case "/join":
