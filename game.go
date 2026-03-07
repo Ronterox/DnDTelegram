@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math/rand/v2"
@@ -83,7 +84,14 @@ func (c *Character) IsAlive() bool {
 }
 
 func (c *Character) String() string {
-	return fmt.Sprintf("%s: (%s)", c.Name, c.Desc)
+	var output bytes.Buffer
+
+	output.WriteString(fmt.Sprintf("%s: %s", c.Name, c.Desc))
+	for key, value := range c.Stats {
+		output.WriteString(fmt.Sprintf("\n%s: %d", key, value))
+	}
+
+	return output.String()
 }
 
 func (c *Character) RollModifier(stat string) int {
@@ -174,10 +182,11 @@ func NewPlayer(userID int64, name string, description string) *Player {
 }
 
 type Game struct {
-	Started       bool
-	playerIndex   int
 	CurrentPlayer *Player
 	Players       []*Player
+	SessionID     string
+	Started       bool
+	playerIndex   int
 }
 
 func (g *Game) FindPlayer(id int64) *Player {

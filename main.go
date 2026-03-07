@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -50,11 +51,69 @@ const BUTTON_DEFEND = "defend"
 const BUTTON_MAGIC = "magic"
 const BUTTON_NOMAGIC = "nomagic"
 
+const SESSION_PROMPT = `
+We will start creating the player characters before starting the game.
+`
+const START_GAME_PROMPT = `
+All players have been created, now it's time to start the game.
+`
+const JOIN_PROMPT = `
+A new player has joined, say something short to them as a welcome, do not extend too much.
+The campaign hasn't started yet, so you can't talk to them.
+`
+
 func failIf(condition bool, msg string) {
 	if condition {
 		fmt.Println(msg)
 		panic(msg)
 	}
+}
+
+// Creates a session and returns the ID of the last session created
+func createSession(prompt string) (string, error) {
+	sessionCommand := exec.Command("opencode", "run", "--agent", "dnd", prompt)
+
+	// opencode session list | grep ses | cut -d' ' -f1 | head -1
+	sessionList := exec.Command("opencode", "session", "list")
+	grepSessions := exec.Command("grep", "ses")
+	cutRest := exec.Command("cut", "-d' '", "-f1")
+	getHead := exec.Command("head", "-1")
+
+	if _, err := sessionCommand.Output(); err != nil {
+		return "", fmt.Errorf("error creating session: %w", err)
+	}
+
+	grepSessions.Stdin, _ = sessionList.StdoutPipe()
+	cutRest.Stdin, _ = grepSessions.StdoutPipe()
+	getHead.Stdin, _ = cutRest.StdoutPipe()
+
+	sessionList.Start()
+	grepSessions.Start()
+	cutRest.Start()
+
+	sessionID, err := getHead.CombinedOutput()
+
+	sessionList.Wait()
+	grepSessions.Wait()
+	cutRest.Wait()
+
+	if err != nil {
+		return "", fmt.Errorf("error getting session ID: %w", err)
+	}
+
+	return string(sessionID), nil
+}
+
+// Queries the AI for a response to the given prompt, returns the response
+func queryAI(session string, prompt string) (string, error) {
+	cmd := exec.Command("opencode", "run", "-s", session, "--agent", "dnd", prompt)
+
+	stdout, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("error querying AI: %w", err)
+	}
+
+	return string(stdout), nil
 }
 
 func main() {
@@ -93,6 +152,7 @@ func main() {
 
 			text := message.Text
 			if game = games[chatID]; game != nil {
+				fmt.Printf("Game found: %+v\n", game)
 				if player = game.FindPlayer(userID); player != nil {
 					state = player.State
 					fmt.Printf("Player found: %+v\n", player)
@@ -110,6 +170,7 @@ func main() {
 				userID := callback.User.ID
 
 				if game = games[chatID]; game != nil {
+					fmt.Printf("Game found: %+v\n", game)
 					if player = game.FindPlayer(userID); player != nil {
 						state = player.State
 						fmt.Printf("Player found: %+v\n", player)
@@ -119,13 +180,18 @@ func main() {
 				fmt.Printf("Pressing button %s, %d\n", buttonKey, userID)
 
 				finalDecision := func() {
-					time.Sleep(time.Second * 2)
+					failIf(player == nil, "Player not found")
+
+					api.sendText(chatID, player.Character.String())
 					api.sendText(chatID, "Ahora en base a tus decisiones, habilidades e historia de ti eres...")
 
-					api.sendText(chatID, "<Inserta AI analizando a tu personaje>")
-					api.sendText(chatID, "<Inserta mostrar toda tu informacion de personaje>")
+					message, err := queryAI(game.SessionID, JOIN_PROMPT+fmt.Sprintf("New Player:\n%s", &player.Character))
+					if err != nil {
+						api.sendText(chatID, err.Error())
+						return
+					}
+					api.sendText(chatID, message)
 
-					failIf(player == nil, "Player not found")
 					player.State = StateReady
 
 					api.sendText(chatID, "Estas listo para la campaña!")
@@ -235,8 +301,15 @@ func main() {
 				failIf(!game.SetNextPlayer(), "Couldn't find next player")
 
 				api.sendText(chatID, "¡La campaña ha comenzado!")
-				api.sendButtons(chatID,
-					fmt.Sprintf("%s te encuentras en el baño haciendo kk, que quieres hacer?", game.CurrentPlayer.Name),
+				api.sendText(chatID, "Right now is "+game.CurrentPlayer.Name+"'s turn... The story is loading...")
+
+				message, err := queryAI(game.SessionID, START_GAME_PROMPT+fmt.Sprintf("\nRight now is %s's turn.", game.CurrentPlayer.Name))
+				if err != nil {
+					api.sendText(chatID, err.Error())
+					continue
+				}
+
+				api.sendButtons(chatID, message,
 					[][]InlineKeyboardButton{{
 						{Text: "Inventario", CallbackData: "inventory"},
 						{Text: "Stats", CallbackData: "stats"},
@@ -249,8 +322,17 @@ func main() {
 				}
 
 				if game == nil {
-					games[chatID] = &Game{playerIndex: -1, Players: []*Player{}}
+					api.sendText(chatID, "Creando nueva sesión...")
+
+					sessionID, err := createSession(SESSION_PROMPT)
+					if err != nil {
+						api.sendText(chatID, err.Error())
+						continue
+					}
+
+					games[chatID] = &Game{playerIndex: -1, Players: []*Player{}, SessionID: sessionID}
 					game = games[chatID]
+
 					api.sendText(chatID, MSG_GAME_STARTED)
 				}
 
@@ -371,12 +453,21 @@ func main() {
 				api.sendText(chatID, "¡Error, estos son los comandos disponibles!")
 				api.sendText(chatID, MSG_HELP)
 			default:
+				fmt.Println("Running default")
 				if game != nil && game.Started {
 					if game.CurrentPlayer != nil && game.CurrentPlayer.ID == userID && state != StateDeciding {
-						game.CurrentPlayer.State = StateDeciding
-						api.sendButtons(chatID,
-							"Estas a punto de cagarte encima, rollea Constitucion para aguantar las ganas, o decide algo mas!",
-							[][]InlineKeyboardButton{{{Text: "Roll", CallbackData: BUTTON_ROLL_CONSTITUTION}}})
+						prompt := fmt.Sprintf("%s says %s", game.CurrentPlayer.Name, text)
+						api.sendText(chatID, prompt)
+
+						// game.CurrentPlayer.State = StateDeciding
+
+						message, err := queryAI(game.SessionID, fmt.Sprintf("%s.\n\n%s", prompt, &game.CurrentPlayer.Character))
+						if err != nil {
+							api.sendText(chatID, err.Error())
+							continue
+						}
+
+						api.sendButtons(chatID, message, [][]InlineKeyboardButton{{{Text: "Roll", CallbackData: BUTTON_ROLL_CONSTITUTION}}})
 					}
 				}
 			}
