@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -127,6 +128,18 @@ func main() {
 	games := make(map[int64]*Game)
 	offset := 0
 
+	file, err := os.Open("games.json")
+	if err == nil {
+		if err = json.NewDecoder(file).Decode(&games); err != nil {
+			fmt.Println("Error decoding file:", err)
+		} else {
+			fmt.Printf("%d games loaded\n", len(games))
+		}
+		file.Close()
+	} else {
+		fmt.Println("Error opening file:", err)
+	}
+
 	fmt.Printf("Bot started with token ending in %s... Press Ctrl+C to stop.\n", api.token[len(api.token)-8:])
 
 	emptyLayout := [][]InlineKeyboardButton{}
@@ -139,6 +152,28 @@ func main() {
 		{Text: "Pass", CallbackData: BUTTON_PASS},
 		{Text: "Pause", CallbackData: BUTTON_PAUSE},
 	}}
+
+	go func() {
+		for {
+			time.Sleep(time.Second * 60)
+			fmt.Println("Saving game states...")
+
+			file, err := os.Create("games.json")
+			if err != nil {
+				fmt.Println("Error creating file:", err)
+				continue
+			}
+
+			encoder := json.NewEncoder(file)
+			encoder.SetIndent("", "  ")
+
+			if err = encoder.Encode(games); err != nil {
+				fmt.Println("Error encoding file:", err)
+			}
+
+			file.Close()
+		}
+	}()
 
 	for {
 		updates, err := api.getUpdates(offset)
@@ -337,7 +372,6 @@ func main() {
 
 			command, rest, hasArgs := strings.Cut(text, " ")
 
-			// TODO: Save the session in case bot crashes
 			switch command {
 			case "/start":
 				if game == nil {
@@ -388,7 +422,7 @@ func main() {
 						continue
 					}
 
-					games[chatID] = &Game{playerIndex: -1, Players: []*Player{}, SessionID: sessionID}
+					games[chatID] = &Game{PlayerIndex: -1, Players: []*Player{}, SessionID: sessionID}
 					game = games[chatID]
 
 					api.sendText(chatID, MSG_GAME_STARTED)
@@ -469,13 +503,13 @@ func main() {
 								smallest = min(rolls[i], smallest)
 								total += rolls[i]
 
-								// if i == 3 {
-								// 	time.Sleep(time.Second * 3)
-								// } else {
-								// 	time.Sleep(time.Second * 1)
-								// }
-								//
-								// api.sendText(chatID, fmt.Sprintf("%d", rolls[i]))
+								if i == 3 {
+									time.Sleep(time.Second * 3)
+								} else {
+									time.Sleep(time.Second * 1)
+								}
+
+								api.sendText(chatID, fmt.Sprintf("%d", rolls[i]))
 							}
 
 							result := total - smallest
@@ -493,7 +527,7 @@ func main() {
 								api.sendText(chatID, fmt.Sprintf("Tu %s es de %d... oof, que mala suerte no?", key, result))
 							}
 
-							// time.Sleep(time.Second * 3)
+							time.Sleep(time.Second * 3)
 						}
 
 						api.sendButtons(chatID, "Estas satisfecho con este resultado?", [][]InlineKeyboardButton{{

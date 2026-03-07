@@ -8,75 +8,37 @@ import (
 )
 
 type Item struct {
-	Type       string // Weapon, Armor, Item
-	Name       string
-	Desc       string
-	Weight     float64
-	Properties []string
+	Type       string   `json:"type"` // Weapon, Armor, Item
+	Name       string   `json:"name"`
+	Desc       string   `json:"desc"`
+	Weight     float64  `json:"weight"`
+	Properties []string `json:"properties"`
 }
 
 type Weapon struct {
 	Item
-	Damage     string // 1d8
-	DamageType string // Slashing
+	Damage     string `json:"damage"`      // 1d8
+	DamageType string `json:"damage_type"` // Slashing
 }
 
 type Armor struct {
 	Item
-	BaseAC      int
-	MinStrength int
+	BaseAC      int `json:"base_ac"`
+	MinStrength int `json:"min_strength"`
 }
 
 type Character struct {
-	Name      string
-	Race      string
-	Class     string
-	Level     int
-	Desc      string
-	Stats     map[string]int    // Strength, Dexterity, Constitution, Intelligence, Wisdom, and Charisma
-	Skills    map[string]string // Acrobatics, Animal Handling, Arcana, Athletics, Deception, History, Insight,
-	Armor     int
-	HitPoints int
-	Equipment []any // Weapon, Armor, Item
-	pitty     int
-}
-
-func (c *Character) UnmarshalJSON(data []byte) error {
-	// Temporary type to avoid infinite recursion
-	type Alias Character
-	aux := &struct {
-		Equipment []json.RawMessage `json:"equipment"`
-		*Alias
-	}{
-		Alias: (*Alias)(c),
-	}
-
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
-
-	for _, raw := range aux.Equipment {
-		var typeCheck struct {
-			Type string `json:"type"`
-		}
-		json.Unmarshal(raw, &typeCheck)
-
-		switch typeCheck.Type {
-		case "Weapon":
-			var w Weapon
-			json.Unmarshal(raw, &w)
-			c.Equipment = append(c.Equipment, w)
-		case "Armor":
-			var a Armor
-			json.Unmarshal(raw, &a)
-			c.Equipment = append(c.Equipment, a)
-		default:
-			var i Item
-			json.Unmarshal(raw, &i)
-			c.Equipment = append(c.Equipment, i)
-		}
-	}
-	return nil
+	Name      string            `json:"name"`
+	Race      string            `json:"race"`
+	Class     string            `json:"class"`
+	Level     int               `json:"level"`
+	Desc      string            `json:"desc"`
+	Stats     map[string]int    `json:"stats"`  // Strength, Dexterity, Constitution, Intelligence, Wisdom, and Charisma
+	Skills    map[string]string `json:"skills"` // Acrobatics, Animal Handling, Arcana, Athletics, Deception, History, Insight,
+	Armor     int               `json:"armor"`
+	HitPoints int               `json:"hit_points"`
+	Equipment []any             `json:"equipment"` // Weapon, Armor, Item
+	pitty     int               `json:"-"`
 }
 
 func (c *Character) IsAlive() bool {
@@ -140,8 +102,8 @@ const (
 
 type Player struct {
 	Character
-	ID    int64
-	State PlayerState
+	ID    int64       `json:"id"`
+	State PlayerState `json:"state"`
 }
 
 func NewPlayer(userID int64, name string, description string) *Player {
@@ -188,12 +150,50 @@ func NewPlayer(userID int64, name string, description string) *Player {
 	}
 }
 
+func (c *Player) UnmarshalJSON(data []byte) error {
+	// Temporary type to avoid infinite recursion
+	type Alias Player
+	aux := &struct {
+		Equipment []json.RawMessage `json:"equipment"`
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	for _, raw := range aux.Equipment {
+		var typeCheck struct {
+			Type string `json:"type"`
+		}
+		json.Unmarshal(raw, &typeCheck)
+
+		switch typeCheck.Type {
+		case "Weapon":
+			var w Weapon
+			json.Unmarshal(raw, &w)
+			c.Equipment = append(c.Equipment, w)
+		case "Armor":
+			var a Armor
+			json.Unmarshal(raw, &a)
+			c.Equipment = append(c.Equipment, a)
+		default:
+			var i Item
+			json.Unmarshal(raw, &i)
+			c.Equipment = append(c.Equipment, i)
+		}
+	}
+	return nil
+}
+
 type Game struct {
-	CurrentPlayer *Player
-	Players       []*Player
-	SessionID     string
-	Started       bool
-	playerIndex   int
+	CurrentPlayer *Player   `json:"current_player"`
+	Players       []*Player `json:"players"`
+	SessionID     string    `json:"session_id"`
+	Started       bool      `json:"started"`
+	PlayerIndex   int       `json:"player_index"`
 }
 
 func (g *Game) FindPlayer(id int64) *Player {
@@ -206,13 +206,13 @@ func (g *Game) FindPlayer(id int64) *Player {
 }
 
 func (g *Game) IncrementPlayerIndex() {
-	g.playerIndex = (g.playerIndex + 1) % len(g.Players)
+	g.PlayerIndex = (g.PlayerIndex + 1) % len(g.Players)
 }
 
 func (g *Game) SetNextPlayer() bool {
 	g.IncrementPlayerIndex()
 	for i, player := range g.Players {
-		if i != g.playerIndex {
+		if i != g.PlayerIndex {
 			continue
 		}
 
