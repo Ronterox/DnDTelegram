@@ -83,6 +83,13 @@ func (c *Character) IsAlive() bool {
 	return c.HitPoints > 0
 }
 
+/*
+This may be a good way of outputting information about the character
+
+	┃  Let me think about what I know:                                                    Context
+	┃  - Ricardo: A mage (but with 17 Strength, which is interesting)                     7,325 tokens
+	┃  - Stats: DEX 8, CON 13, INT 9, WIS 15, CHA 8, STR 17                               4% used
+*/
 func (c *Character) toString() string {
 	var output bytes.Buffer
 

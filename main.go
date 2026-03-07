@@ -75,35 +75,24 @@ func failIf(condition bool, msg string) {
 func createSession(prompt string) (string, error) {
 	sessionCommand := exec.Command("opencode", "run", "--agent", "dnd", prompt)
 
-	// opencode session list | grep ses | cut -d' ' -f1 | head -1
-	sessionList := exec.Command("opencode", "session", "list")
-	grepSessions := exec.Command("grep", "ses")
-	cutRest := exec.Command("cut", "-d' '", "-f1")
-	getHead := exec.Command("head", "-1")
-
 	if _, err := sessionCommand.Output(); err != nil {
 		return "", fmt.Errorf("error creating session: %w", err)
 	}
 
-	grepSessions.Stdin, _ = sessionList.StdoutPipe()
-	cutRest.Stdin, _ = grepSessions.StdoutPipe()
-	getHead.Stdin, _ = cutRest.StdoutPipe()
-
-	sessionList.Start()
-	grepSessions.Start()
-	cutRest.Start()
-
-	sessionID, err := getHead.CombinedOutput()
-
-	sessionList.Wait()
-	grepSessions.Wait()
-	cutRest.Wait()
-
+	output, err := exec.Command("opencode", "session", "list").Output()
 	if err != nil {
 		return "", fmt.Errorf("error getting session ID: %w", err)
 	}
 
-	return string(sessionID), nil
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "ses") {
+			sessionID := strings.Split(line, " ")[0]
+			return sessionID, nil
+		}
+	}
+
+	return "", fmt.Errorf("error getting session ID: session not found")
 }
 
 // Queries the AI for a response to the given prompt, returns the response
@@ -199,6 +188,7 @@ func main() {
 					api.sendText(chatID, "Estas listo para la campaña!")
 				}
 
+				// TODO: Add a pause button for talking between people in the group when is your turn
 				switch state {
 				case StateSettingUp:
 					switch buttonKey {
@@ -277,6 +267,8 @@ func main() {
 
 			command, rest, hasArgs := strings.Cut(text, " ")
 
+			// TODO: Also temporarily pause campaign to kepp going later, save the session
+			// in case bot crashes
 			switch command {
 			case "/start":
 				if game == nil {
@@ -366,6 +358,9 @@ func main() {
 				} else {
 					api.sendText(chatID, ERR_JOINED)
 				}
+			// TODO: Allow this to be a button as well
+			// Maybe send it automatically to the AI, and simplify to just a D20
+			// Maybe simplify the game as well
 			case "/roll":
 				fmt.Println("Running roll")
 
