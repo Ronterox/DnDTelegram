@@ -2,10 +2,8 @@ package main
 
 // TODO: Add final objective that determines the end of the campaign at the start
 // TODO: Translate to spanish
-// TODO: Show roll of the player
 // TODO: Shorter Texts
 // TODO: Show who's next turn is instantly
-// TODO: Inventory, Skills
 // TODO: Say at the end of What do you do? the name of the person as well.
 // TODO: Say the name of the person with every action taken as well, like buttons
 // TODO: Create session alone for the creation of character, and a bot alone for it
@@ -315,14 +313,14 @@ func main() {
 								output.WriteString(fmt.Sprintf("%s: %d (+%d)\n", key, value, game.CurrentPlayer.RollModifier(key)))
 							}
 
-							message, err := queryAI(
-								game.SessionID,
-								fmt.Sprintf(
-									"%s has rolled, here is what he would have gotten:\n\n%s",
-									game.CurrentPlayer.Name,
-									output.String(),
-								),
+							input := fmt.Sprintf(
+								"%s has rolled, here is what he would have gotten:\n\n%s",
+								game.CurrentPlayer.Name,
+								output.String(),
 							)
+
+							api.sendText(chatID, input)
+							message, err := queryAI(game.SessionID, input)
 
 							if err != nil {
 								api.sendText(chatID, err.Error())
@@ -342,6 +340,8 @@ func main() {
 						} else {
 							player := game.CurrentPlayer
 
+							api.sendText(chatID, fmt.Sprintf("Ahora es el turno de %s!", player.Name))
+
 							message, err := queryAI(game.SessionID,
 								fmt.Sprintf("It's now %s's turn. Say something short to them continuing their story!\n\n%s",
 									player.Name, player.toString()),
@@ -358,14 +358,11 @@ func main() {
 						game.CurrentPlayer.State = StatePaused
 						api.sendText(chatID, MSG_PAUSE)
 					case BUTTON_INVENTORY:
-						api.editMessage(chatID, messageID, message.Text, emptyLayout)
-						api.sendText(chatID, "Inventory")
+						api.sendText(chatID, player.Inventory())
 					case BUTTON_STATS:
-						api.editMessage(chatID, messageID, message.Text, emptyLayout)
 						api.sendText(chatID, player.toString())
 					case BUTTON_SKILLS:
-						api.editMessage(chatID, messageID, message.Text, emptyLayout)
-						api.sendText(chatID, "Skills")
+						api.sendText(chatID, player.Skills())
 					}
 				case StatePaused:
 					switch buttonKey {
@@ -377,7 +374,7 @@ func main() {
 					api.editMessage(chatID, messageID, buttonKey, emptyLayout)
 				}
 
-				fmt.Printf("Edited message %d\n", messageID)
+				fmt.Printf("Button from message %d\n", messageID)
 				continue
 			}
 
