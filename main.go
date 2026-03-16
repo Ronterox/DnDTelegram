@@ -1,5 +1,16 @@
 package main
 
+// TODO: Add final objective that determines the end of the campaign at the start
+// TODO: Translate to spanish
+// TODO: Show roll of the player
+// TODO: Shorter Texts
+// TODO: Show who's next turn is instantly
+// TODO: Inventory, Skills
+// TODO: Say at the end of What do you do? the name of the person as well.
+// TODO: Say the name of the person with every action taken as well, like buttons
+// TODO: Create session alone for the creation of character, and a bot alone for it
+// This prompt worked, keep it up, save the session
+
 import (
 	"bytes"
 	"encoding/json"
