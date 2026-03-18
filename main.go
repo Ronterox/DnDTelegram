@@ -1,10 +1,6 @@
 package main
 
 // TODO: Add final objective that determines the end of the campaign at the start
-// TODO: Translate to spanish
-// TODO: Shorter Texts
-// TODO: Show who's next turn is instantly
-// TODO: Say at the end of What do you do? the name of the person as well.
 // TODO: Say the name of the person with every action taken as well, like buttons
 // TODO: Create session alone for the creation of character, and a bot alone for it
 // This prompt worked, keep it up, save the session
@@ -72,17 +68,20 @@ const BUTTON_STATS = "stats"
 const BUTTON_SKILLS = "skills"
 
 const SESSION_PROMPT = `
-We will start creating the player characters before starting the game.
+Empezaremos con la creación de personajes antes de dar inicio a la partida.
 `
 const START_GAME_PROMPT = `
-All players have been created, now it's time to start the game.
+Todos los personajes han sido creados, ahora es momento de empezar el juego.
 
-Do not ask questions! Start right away with the information you have.
+¡No hagas preguntas! Empieza de inmediato con la información que tienes.
 `
 const JOIN_PROMPT = `
-A new player has joined, say something short to them as a welcome, do not extend too much.
-The campaign hasn't started yet, so you can't talk to them.
+Se ha unido un nuevo jugador. Dale la bienvenida con unas palabras breves, sin extenderte demasiado.
+La campaña aún no ha comenzado, así que no puedes hablar con él.
 `
+const ROLL_PROMPT = "%s ha roleado, esto es lo que hubiera obtenido:\n\n%s"
+const TURN_PROMPT = "Ahora es el turno de %s! ¡Di algo corto a ellos continuando su historia!\n\n%s"
+const TURN_FIRST_PROMPT = "\nAhora es el turno de %s."
 
 func failIf(condition bool, msg string) {
 	if condition {
@@ -313,13 +312,9 @@ func main() {
 								output.WriteString(fmt.Sprintf("%s: %d (+%d)\n", key, value, game.CurrentPlayer.RollModifier(key)))
 							}
 
-							input := fmt.Sprintf(
-								"%s has rolled, here is what he would have gotten:\n\n%s",
-								game.CurrentPlayer.Name,
-								output.String(),
-							)
-
+							input := fmt.Sprintf(ROLL_PROMPT, game.CurrentPlayer.Name, output.String())
 							api.sendText(chatID, input)
+
 							message, err := queryAI(game.SessionID, input)
 
 							if err != nil {
@@ -342,11 +337,7 @@ func main() {
 
 							api.sendText(chatID, fmt.Sprintf("Ahora es el turno de %s!", player.Name))
 
-							message, err := queryAI(game.SessionID,
-								fmt.Sprintf("It's now %s's turn. Say something short to them continuing their story!\n\n%s",
-									player.Name, player.toString()),
-							)
-
+							message, err := queryAI(game.SessionID, fmt.Sprintf(TURN_PROMPT, player.Name, player.toString()))
 							if err != nil {
 								api.sendText(chatID, err.Error())
 								continue
@@ -406,9 +397,9 @@ func main() {
 				failIf(!game.SetNextPlayer(), "Couldn't find next player")
 
 				api.sendText(chatID, "¡La campaña ha comenzado!")
-				api.sendText(chatID, "Right now is "+game.CurrentPlayer.Name+"'s turn... The story is loading...")
+				api.sendText(chatID, "Ahora mismo es el turno de "+game.CurrentPlayer.Name+"! La historia está cargando...")
 
-				message, err := queryAI(game.SessionID, START_GAME_PROMPT+fmt.Sprintf("\nRight now is %s's turn.", game.CurrentPlayer.Name))
+				message, err := queryAI(game.SessionID, START_GAME_PROMPT+fmt.Sprintf(TURN_FIRST_PROMPT, game.CurrentPlayer.Name))
 				if err != nil {
 					api.sendText(chatID, err.Error())
 					continue
