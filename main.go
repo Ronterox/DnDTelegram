@@ -59,20 +59,22 @@ const BUTTON_STATS = "stats"
 const BUTTON_SKILLS = "skills"
 
 const SESSION_PROMPT = `
-Empezaremos con la creación de personajes antes de dar inicio a la partida.
+We will start creating the player characters before starting the game.
 `
-const START_GAME_PROMPT = `
-Todos los personajes han sido creados, ahora es momento de empezar el juego.
 
-¡No hagas preguntas! Empieza de inmediato con la información que tienes.
+const START_GAME_PROMPT = `
+All players have been created, now it's time to start the game.
+
+Do not ask questions! Start right away with the information you have.
 `
 const JOIN_PROMPT = `
-Se ha unido un nuevo jugador. Dale la bienvenida con unas palabras breves, sin extenderte demasiado.
-La campaña aún no ha comenzado, así que no puedes hablar con él.
+A new player has joined, say something short to them as a welcome, do not extend too much.
+The campaign hasn't started yet, so you can't talk to them.
 `
-const ROLL_PROMPT = "%s ha roleado, esto es lo que hubiera obtenido:\n\n%s"
-const TURN_PROMPT = "Ahora es el turno de %s! ¡Di algo corto a ellos continuando su historia!\n\n%s"
-const TURN_FIRST_PROMPT = "\nAhora es el turno de %s. Inicia la historia y pregunta sobre el, poco a poco entraran mas personajes..."
+const ROLL_PROMPT = "%s has rolled, here is what he would have gotten:\n\n%s"
+const TURN_PROMPT = "It's now %s's turn. Say something short to them continuing their story!\n\n%s"
+const TURN_FIRST_PROMPT = "\nRight now is %s's turn."
+const SAYS_PROMPT = "%s says %s"
 
 func failIf(condition bool, msg string) {
 	if condition {
@@ -526,7 +528,7 @@ func main() {
 				fmt.Println("Running default")
 				if game != nil && game.Started {
 					if game.CurrentPlayer != nil && game.CurrentPlayer.ID == userID && game.CurrentPlayer.State == StateReady {
-						prompt := fmt.Sprintf("%s dice %s", game.CurrentPlayer.Name, text)
+						prompt := fmt.Sprintf(SAYS_PROMPT, game.CurrentPlayer.Name, text)
 						api.sendText(chatID, prompt)
 
 						message, err := queryAI(game.SessionID, fmt.Sprintf("%s.\n\n%s", prompt, game.CurrentPlayer.toString()))
