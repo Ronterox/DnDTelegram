@@ -81,7 +81,7 @@ La campaña aún no ha comenzado, así que no puedes hablar con él.
 `
 const ROLL_PROMPT = "%s ha roleado, esto es lo que hubiera obtenido:\n\n%s"
 const TURN_PROMPT = "Ahora es el turno de %s! ¡Di algo corto a ellos continuando su historia!\n\n%s"
-const TURN_FIRST_PROMPT = "\nAhora es el turno de %s."
+const TURN_FIRST_PROMPT = "\nAhora es el turno de %s. Inicia la historia y pregunta sobre el, poco a poco entraran mas personajes..."
 
 func failIf(condition bool, msg string) {
 	if condition {
@@ -497,19 +497,24 @@ func main() {
 							smallest := 100
 							total := 0
 
+							var out bytes.Buffer
+
 							for i := range 4 {
 								rolls[i] = player.Roll(6)
 								smallest = min(rolls[i], smallest)
 								total += rolls[i]
 
 								if i == 3 {
-									time.Sleep(time.Second * 3)
+									// time.Sleep(time.Second * 3)
 								} else {
-									time.Sleep(time.Second * 1)
+									// time.Sleep(time.Second * 1)
 								}
 
-								api.sendText(chatID, fmt.Sprintf("%d", rolls[i]))
+								out.WriteString(fmt.Sprintf("%d", rolls[i]))
+								out.WriteString(" ")
 							}
+
+							api.sendText(chatID, out.String())
 
 							result := total - smallest
 							player.Stats[key] = result
@@ -526,7 +531,7 @@ func main() {
 								api.sendText(chatID, fmt.Sprintf("Tu %s es de %d... oof, que mala suerte no?", key, result))
 							}
 
-							time.Sleep(time.Second * 3)
+							// time.Sleep(time.Second * 3)
 						}
 
 						api.sendButtons(chatID, "Estas satisfecho con este resultado?", [][]InlineKeyboardButton{{
@@ -564,7 +569,7 @@ func main() {
 				fmt.Println("Running default")
 				if game != nil && game.Started {
 					if game.CurrentPlayer != nil && game.CurrentPlayer.ID == userID && game.CurrentPlayer.State == StateReady {
-						prompt := fmt.Sprintf("%s says %s", game.CurrentPlayer.Name, text)
+						prompt := fmt.Sprintf("%s dice %s", game.CurrentPlayer.Name, text)
 						api.sendText(chatID, prompt)
 
 						message, err := queryAI(game.SessionID, fmt.Sprintf("%s.\n\n%s", prompt, game.CurrentPlayer.toString()))
