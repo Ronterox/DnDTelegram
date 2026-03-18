@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
+	"time"
 )
 
 type User struct {
@@ -53,6 +56,14 @@ type API struct {
 	base  string
 }
 
+type TelegramResponse struct {
+	Ok          bool   `json:"ok"`
+	Description string `json:"description"`
+	Parameters  struct {
+		RetryAfter int `json:"retry_after"`
+	} `json:"parameters"`
+}
+
 func NewAPI(token string) *API {
 	return &API{token: token, base: "https://api.telegram.org/bot" + token}
 }
@@ -82,14 +93,47 @@ func (a *API) sendText(chatID int64, text string) {
 	http.Post(a.base+"/sendMessage", "application/json", bytes.NewBuffer(jsonData))
 }
 
+const MAX_TRIES = 3
+
 func (a *API) sendButtons(chatID int64, text string, buttons [][]InlineKeyboardButton) {
-	fmt.Printf("Sending text buttons to chat %x: %s\n", chatID, text)
 	jsonData, _ := json.Marshal(map[string]any{
 		"chat_id":      chatID,
 		"text":         text,
 		"reply_markup": InlineKeyboardMarkup{InlineKeyboard: buttons},
 	})
-	http.Post(a.base+"/sendMessage", "application/json", bytes.NewBuffer(jsonData))
+
+	for range MAX_TRIES {
+		resp, err := http.Post(a.base+"/sendMessage", "application/json", bytes.NewBuffer(jsonData))
+
+		if err != nil {
+			fmt.Printf("Network Error: %v\n", err)
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			var tgResp TelegramResponse
+			json.NewDecoder(resp.Body).Decode(&tgResp)
+
+			if resp.StatusCode == 429 {
+				seconds := tgResp.Parameters.RetryAfter
+				if seconds == 0 {
+					seconds = 1
+				}
+
+				fmt.Printf("Rate limited! Sleeping for %d seconds...\n", seconds)
+				time.Sleep(time.Duration(seconds) * time.Second)
+				continue
+			}
+
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Printf("Telegram Rejected Request: %s\n", string(body))
+			continue
+		}
+
+		fmt.Println("Message sent successfully")
+		break
+	}
 }
 
 func (a *API) editMessage(chatID int64, messageID int64, text string, buttons [][]InlineKeyboardButton) {
@@ -99,5 +143,40 @@ func (a *API) editMessage(chatID int64, messageID int64, text string, buttons []
 		"text":         text,
 		"reply_markup": InlineKeyboardMarkup{InlineKeyboard: buttons},
 	})
-	http.Post(a.base+"/editMessageText", "application/json", bytes.NewBuffer(jsonData))
+
+	for i := range MAX_TRIES {
+		resp, err := http.Post(a.base+"/editMessageText", "application/json", bytes.NewBuffer(jsonData))
+
+		if err != nil {
+			fmt.Printf("Attempt %d: Network error: %v\n", i+1, err)
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			fmt.Println("Message edited successfully!")
+			break
+		}
+
+		body, _ := io.ReadAll(resp.Body)
+		fmt.Printf("Edit failed for message %d: %s\n", messageID, string(body))
+
+		if strings.Contains(string(body), "message is not modified") {
+			break
+		}
+
+		var tgResp TelegramResponse
+		json.NewDecoder(resp.Body).Decode(&tgResp)
+
+		if resp.StatusCode == 429 {
+			seconds := tgResp.Parameters.RetryAfter
+			if seconds == 0 {
+				seconds = 1
+			}
+
+			fmt.Printf("Rate limited! Sleeping for %d seconds...\n", seconds)
+			time.Sleep(time.Duration(seconds) * time.Second)
+			continue
+		}
+	}
 }

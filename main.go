@@ -450,51 +450,45 @@ func main() {
 					api.sendText(chatID, "Veamos que destino depara para tu fisico y fuerza mental...")
 
 					go func() {
+						var out bytes.Buffer
+
 						for key := range player.Stats {
-							api.sendText(chatID, fmt.Sprintf("En cuanto a tu %s...", key))
+							out.WriteString(fmt.Sprintf("En cuanto a tu %s...\n\n", key))
 
 							rolls := make([]int, 4)
 							smallest := 100
 							total := 0
-
-							var out bytes.Buffer
 
 							for i := range 4 {
 								rolls[i] = player.Roll(6)
 								smallest = min(rolls[i], smallest)
 								total += rolls[i]
 
-								if i == 3 {
-									// time.Sleep(time.Second * 3)
-								} else {
-									// time.Sleep(time.Second * 1)
-								}
-
 								out.WriteString(fmt.Sprintf("%d", rolls[i]))
 								out.WriteString(" ")
 							}
 
-							api.sendText(chatID, out.String())
-
 							result := total - smallest
 							player.Stats[key] = result
 
+							out.WriteString("\n")
 							if result > 16 {
-								api.sendText(chatID, fmt.Sprintf("¡Tu %s es de %d, en verdad que eres habilidoso!", key, result))
+								out.WriteString(fmt.Sprintf("¡Tu %s es de %d, en verdad que eres habilidoso!", key, result))
 							} else if result > 14 {
-								api.sendText(chatID, fmt.Sprintf("¡Tu %s es de %d, estas sobre el promedio!", key, result))
+								out.WriteString(fmt.Sprintf("¡Tu %s es de %d, estas sobre el promedio!", key, result))
 							} else if result > 9 {
-								api.sendText(chatID, fmt.Sprintf("¡Tu %s es de %d, un valor decente!", key, result))
+								out.WriteString(fmt.Sprintf("¡Tu %s es de %d, un valor decente!", key, result))
 							} else if result > 6 {
-								api.sendText(chatID, fmt.Sprintf("Tu %s es de %d, un poco debajo del promedio...", key, result))
+								out.WriteString(fmt.Sprintf("Tu %s es de %d, un poco debajo del promedio...", key, result))
 							} else {
-								api.sendText(chatID, fmt.Sprintf("Tu %s es de %d... oof, que mala suerte no?", key, result))
+								out.WriteString(fmt.Sprintf("Tu %s es de %d... oof, que mala suerte no?", key, result))
 							}
-
-							// time.Sleep(time.Second * 3)
+							out.WriteString("\n")
 						}
 
-						api.sendButtons(chatID, "Estas satisfecho con este resultado?", [][]InlineKeyboardButton{{
+						out.WriteString("\nEstas satisfecho con este resultado?")
+
+						api.sendButtons(chatID, out.String(), [][]InlineKeyboardButton{{
 							{Text: "Si", CallbackData: BUTTON_MAGIC},
 						}})
 					}()
