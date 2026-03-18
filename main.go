@@ -3,7 +3,7 @@ package main
 // TODO: Add final objective that determines the end of the campaign at the start
 // TODO: Say the name of the person with every action taken as well, like buttons
 // TODO: Create session alone for the creation of character, and a bot alone for it
-// This prompt worked, keep it up, save the session
+// TODO: Permitir sugerencias de otros jugadores, diciendo que no es su turno
 
 import (
 	"bytes"
@@ -50,15 +50,6 @@ const MSG_UNPAUSE = "¡Tu turno ha sido reanudado, ahora lo que digas sera una a
 const BUTTON_ROLL = "roll"
 const BUTTON_PASS = "pass"
 const BUTTON_PAUSE = "pause"
-
-const BUTTON_FIRST_ITEMS = "first-items"
-const BUTTON_FUCKYOU = "te jodes"
-
-const BUTTON_HIT_CLOSE = "close"
-const BUTTON_HIT_FAR = "far"
-
-const BUTTON_ATTACK = "attack"
-const BUTTON_DEFEND = "defend"
 
 const BUTTON_MAGIC = "magic"
 const BUTTON_NOMAGIC = "nomagic"
@@ -254,44 +245,11 @@ func main() {
 				switch state {
 				case StateSettingUp:
 					switch buttonKey {
-					case BUTTON_FIRST_ITEMS:
-						api.editMessage(chatID, messageID, "Ahora investiguemos tu forma de ser...", emptyLayout)
-						go func() {
-							time.Sleep(time.Second * 2)
-							api.sendButtons(chatID, "¿Te gusta golpear los enemigos de cerca o de lejos?", [][]InlineKeyboardButton{{
-								{Text: "Cerca", CallbackData: BUTTON_HIT_CLOSE},
-								{Text: "Lejos", CallbackData: BUTTON_HIT_FAR},
-							}})
-						}()
-					case BUTTON_HIT_CLOSE:
-						api.editMessage(chatID, messageID, "Eres alguien duro no?", emptyLayout)
-						go func() {
-							time.Sleep(time.Second * 2)
-							api.sendButtons(chatID, "¿Defender o atacar?", [][]InlineKeyboardButton{{
-								{Text: "Defensa", CallbackData: BUTTON_DEFEND},
-								{Text: "Ataque", CallbackData: BUTTON_ATTACK},
-							}})
-						}()
-					case BUTTON_HIT_FAR:
-						api.editMessage(chatID, messageID, "Si se puede por que no cierto?", emptyLayout)
-						go func() {
-							time.Sleep(time.Second * 2)
-							api.sendButtons(chatID, "¿Que opinas de la magia?", [][]InlineKeyboardButton{{
-								{Text: "Me parece una buena idea", CallbackData: BUTTON_MAGIC},
-								{Text: "Es una mala idea", CallbackData: BUTTON_NOMAGIC},
-							}})
-						}()
 					case BUTTON_MAGIC:
 						api.editMessage(chatID, messageID, "¡Siempre mola verdad!", emptyLayout)
 						go finalDecision()
 					case BUTTON_NOMAGIC:
 						api.editMessage(chatID, messageID, "¡Yo tambien opino que es para pussies!", emptyLayout)
-						go finalDecision()
-					case BUTTON_DEFEND:
-						api.editMessage(chatID, messageID, "Hay que proteger lo que queremos despues de todo", emptyLayout)
-						go finalDecision()
-					case BUTTON_ATTACK:
-						api.editMessage(chatID, messageID, "La mejor defensa es el mejor ataque", emptyLayout)
 						go finalDecision()
 					}
 				case StateReady:
@@ -535,8 +493,7 @@ func main() {
 						}
 
 						api.sendButtons(chatID, "Estas satisfecho con este resultado?", [][]InlineKeyboardButton{{
-							{Text: "Si", CallbackData: BUTTON_FIRST_ITEMS},
-							{Text: "No", CallbackData: BUTTON_FUCKYOU},
+							{Text: "Si", CallbackData: BUTTON_MAGIC},
 						}})
 					}()
 				} else {
