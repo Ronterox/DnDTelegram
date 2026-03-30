@@ -9,8 +9,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -83,39 +83,53 @@ func failIf(condition bool, msg string) {
 	}
 }
 
-// Creates a session and returns the ID of the last session created
-func createSession(prompt string) (string, error) {
-	sessionCommand := exec.Command("opencode", "run", "--agent", "dnd", prompt)
+const API_BASE = "http://localhost:3000"
 
-	if _, err := sessionCommand.Output(); err != nil {
-		return "", fmt.Errorf("error creating session: %w", err)
-	}
-
-	output, err := exec.Command("opencode", "session", "list").Output()
-	if err != nil {
-		return "", fmt.Errorf("error getting session ID: %w", err)
-	}
-
-	for line := range strings.SplitSeq(string(output), "\n") {
-		if strings.Contains(line, "ses") {
-			sessionID := strings.Split(line, " ")[0]
-			return sessionID, nil
-		}
-	}
-
-	return "", fmt.Errorf("error getting session ID: session not found")
+type ChatResponse struct {
+	Response  map[string]any `json:"response"`
+	SessionID string         `json:"sessionId"`
+	Type      string         `json:"type"`
 }
 
-// Queries the AI for a response to the given prompt, returns the response
-func queryAI(session string, prompt string) (string, error) {
-	cmd := exec.Command("opencode", "run", "-s", session, "--agent", "dnd", prompt)
+func createSession(prompt string) (string, error) {
+	resp, err := http.Post(API_BASE+"/api/init", "application/json", bytes.NewBuffer([]byte("{}")))
+	if err != nil {
+		return "", fmt.Errorf("error creating session: %w", err)
+	}
+	defer resp.Body.Close()
 
-	stdout, err := cmd.Output()
+	var result struct {
+		Success   bool   `json:"success"`
+		SessionID string `json:"sessionId"`
+	}
+	json.NewDecoder(resp.Body).Decode(&result)
+
+	if result.Success {
+		return result.SessionID, nil
+	}
+	return "", fmt.Errorf("error creating session")
+}
+
+func queryAI(session string, prompt string) (string, error) {
+	reqBody, _ := json.Marshal(map[string]any{
+		"message":   prompt,
+		"sessionId": session,
+	})
+	resp, err := http.Post(API_BASE+"/api/chat", "application/json", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("error querying AI: %w", err)
 	}
+	defer resp.Body.Close()
 
-	return string(stdout), nil
+	var result ChatResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("error decoding response: %w", err)
+	}
+
+	if narrative, ok := result.Response["narrative"].(string); ok {
+		return narrative, nil
+	}
+	return "", fmt.Errorf("no narrative in response")
 }
 
 func main() {
