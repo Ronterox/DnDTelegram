@@ -4,42 +4,60 @@ import { createOpencodeClient } from "@opencode-ai/sdk";
 import * as fs from "fs";
 import type { OpencodeClient, JsonSchemaFormat, ChatRequestBody, InitRequestBody, ChatResponse, InitResponse, ErrorResponse } from "./types";
 
-const app = express();
+export const app = express();
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 
-const client: OpencodeClient = createOpencodeClient({
+let client: OpencodeClient = createOpencodeClient({
   baseUrl: "http://localhost:4096",
   throwOnError: true,
 });
 
-const sessions = new Map<string, boolean>();
-
-interface DndMemory {
-  System?: string;
+export function setClient(mockClient: OpencodeClient): void {
+  client = mockClient;
 }
 
-async function initSession(sessionId: string | null = null): Promise<string> {
+export const sessions = new Map<string, boolean>();
+
+let healthCheckOverride: (() => Promise<unknown>) | null = null;
+
+export function setHealthCheckOverride(fn: () => Promise<unknown>): void {
+  healthCheckOverride = fn;
+}
+
+export async function initSession(sessionId: string | null = null): Promise<string> {
   const memoryContent: string = fs.readFileSync("./dnd.md", "utf-8");
-  const memory: DndMemory = JSON.parse(memoryContent);
+  console.log("Loaded dnd.md, length:", memoryContent.length);
   
   let id: string = sessionId ?? "";
   
   if (!id) {
-    const session = await client.session.create({});
+    console.log("Creating new session...");
+    console.log("Checking OpenCode server at http://localhost:4096...");
+    let session;
+    try {
+      const healthCheck = await fetch("http://localhost:4096/health");
+      console.log("Health check response:", healthCheck.status, await healthCheck.text());
+      session = await client.session.create({});
+    } catch (e) {
+      console.error("session.create threw:", e);
+      throw e;
+    }
+    console.log("Session create response:", JSON.stringify(session));
     if (!session.data) {
-      throw new Error("Failed to create session");
+      throw new Error("Failed to create session: " + JSON.stringify(session));
     }
     id = session.data.id;
     console.log(`Session created: ${id}`);
   }
   
   if (!sessions.has(id)) {
+    console.log("Prompting session with memory...");
     await client.session.prompt({
       path: { id },
       body: {
         noReply: true,
-        parts: [{ type: "text", text: memory.System ?? "" }],
+        parts: [{ type: "text", text: memoryContent }],
       },
     });
     console.log(`Session initialized with system prompt: ${id}`);
@@ -56,8 +74,14 @@ app.post("/api/init", async (req: Request<Record<string, never>, InitResponse | 
     res.json({ success: true, sessionId: id });
   } catch (error) {
     const err = error as Error;
-    console.error("Init error:", err.message);
-    res.status(500).json({ error: err.message });
+    console.error("Init error:", error);
+    console.error("Init error type:", typeof error);
+    if (error instanceof Error) {
+      console.error("Init error:", err.message, err.stack);
+      res.status(500).json({ error: err.message || String(error) });
+    } else {
+      res.status(500).json({ error: String(error) });
+    }
   }
 });
 
@@ -131,6 +155,11 @@ app.get("/api/session/:id/messages", async (req: Request<{ id: string }>, res: R
 
 app.get("/api/health", async (_req: Request, res: Response) => {
   try {
+    if (healthCheckOverride) {
+      const health = await healthCheckOverride();
+      res.json(health);
+      return;
+    }
     const response = await fetch("http://localhost:4096/health");
     const health = await response.json();
     res.json(health);
@@ -139,7 +168,12 @@ app.get("/api/health", async (_req: Request, res: Response) => {
   }
 });
 
-const PORT: number = parseInt(process.env.PORT ?? "3000", 10);
-app.listen(PORT, () => {
-  console.log(`API running on http://localhost:${PORT}`);
-});
+export function startServer(port: number = 3000): ReturnType<typeof app.listen> {
+  return app.listen(port, () => {
+    console.log(`API running on http://localhost:${port}`);
+  });
+}
+
+if (process.env.NODE_ENV !== "test") {
+  startServer();
+}

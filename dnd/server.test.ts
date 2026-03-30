@@ -1,22 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll, mock } from "bun:test";
-import express, { Express, Request, Response } from "express";
-import cors from "cors";
-import type { JsonSchemaFormat } from "./types";
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import { app, setClient, sessions, setHealthCheckOverride, startServer } from "./server";
+import type { JsonSchemaFormat, OpencodeClient } from "./types";
 
 interface MockSessionData {
   id: string;
   parts: Array<{ type: string; text?: string }>;
   info?: { structured: Record<string, unknown> | null };
-}
-
-interface ChatRequestBody {
-  message?: string;
-  sessionId?: string;
-  format?: JsonSchemaFormat;
-}
-
-interface InitRequestBody {
-  sessionId?: string;
 }
 
 const mockSession: {
@@ -35,109 +24,29 @@ const mockSession: {
   messages: async () => ({ data: [] })
 };
 
-mock.module("@opencode-ai/sdk", () => ({
-  createOpencodeClient: () => ({ session: mockSession }) as never
-}));
+const mockClient = { session: mockSession } as unknown as OpencodeClient;
 
-const app: Express = express();
-app.use(cors());
-app.use(express.json({ limit: "50mb" }));
-
-const sessions = new Map<string, boolean>();
-let client: { session: typeof mockSession };
 let server: ReturnType<typeof app.listen>;
 
-beforeAll(async () => {
-  const { createOpencodeClient } = await import("@opencode-ai/sdk");
-  
-  client = createOpencodeClient({
-    baseUrl: "http://localhost:4096",
-    throwOnError: true,
-  }) as unknown as { session: typeof mockSession };
-
-  async function initSession(sessionId: string | null = null): Promise<string> {
-    const memory = { System: "Test DM memory" };
-    let id: string = sessionId ?? "";
-    if (!id) {
-      const session = await client.session.create();
-      if (!session.data) {
-        throw new Error("Failed to create session");
-      }
-      id = session.data.id;
-    }
-    if (!sessions.has(id)) {
-      await client.session.prompt({
-        path: { id },
-        body: { noReply: true, parts: [{ type: "text", text: memory.System }] },
-      });
-    }
-    sessions.set(id, true);
-    return id;
-  }
-
-  app.post("/api/init", async (req: Request<Record<string, never>, unknown, InitRequestBody>, res: Response) => {
-    try {
-      const { sessionId } = req.body as InitRequestBody;
-      const id: string = await initSession(sessionId ?? null);
-      res.json({ success: true, sessionId: id });
-    } catch (error) {
-      const err = error as Error;
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.post("/api/chat", async (req: Request<Record<string, never>, unknown, ChatRequestBody>, res: Response) => {
-    try {
-      const body = req.body as ChatRequestBody;
-      const { message, format, sessionId } = body;
-      if (!message) {
-        res.status(400).json({ error: "Message is required" });
-        return;
-      }
-      const id: string = await initSession(sessionId ?? null);
-      const promptBody: { parts: Array<{ type: "text"; text: string }>; format?: JsonSchemaFormat } = { parts: [{ type: "text", text: message }] };
-      if (format) promptBody.format = format;
-      const result = await client.session.prompt({ path: { id }, body: promptBody });
-      const data = result.data as MockSessionData | undefined;
-      const structured = data?.info?.structured;
-      if (structured) {
-        res.json({ response: structured, sessionId: id, type: "structured" });
-      } else {
-        const parts = data?.parts ?? [];
-        const responseText: string = parts.filter((p): p is { type: "text"; text: string } => p.type === "text" && typeof p.text === "string").map((p) => p.text).join("\n");
-        res.json({ response: { narrative: responseText }, sessionId: id, type: "fallback" });
-      }
-    } catch (error) {
-      const err = error as Error;
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.get("/api/session/:id/messages", async (req: Request<{ id: string }>, res: Response) => {
-    try {
-      const messages = await client.session.messages({ path: { id: req.params.id } });
-      res.json(messages);
-    } catch (error) {
-      const err = error as Error;
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.get("/api/health", async (_req: Request, res: Response) => {
-    try {
-      const response = await fetch("http://localhost:4096/health");
-      const health = await response.json();
-      res.json(health);
-    } catch {
-      res.json({ status: "ok", opencode: "connecting" });
-    }
-  });
-
-  server = app.listen(3000);
+beforeAll(() => {
+  setClient(mockClient);
+  setHealthCheckOverride(async () => ({ status: "ok", opencode: "connected" }));
+  server = startServer(3000);
 });
 
 afterAll(() => {
   server?.close();
+});
+
+beforeEach(() => {
+  sessions.clear();
+  mockSession.prompt = async () => ({
+    data: {
+      id: "msg-id",
+      parts: [{ type: "text", text: "Mock DM response" }],
+      info: { structured: null }
+    }
+  });
 });
 
 describe("POST /api/init", () => {
@@ -231,6 +140,6 @@ describe("GET /api/health", () => {
     const res = await fetch("http://localhost:3000/api/health");
     const data = await res.json() as { status: string; opencode: string };
     expect(data.status).toBe("ok");
-    expect(data.opencode).toBe("connecting");
+    expect(data.opencode).toBe("connected");
   });
 });

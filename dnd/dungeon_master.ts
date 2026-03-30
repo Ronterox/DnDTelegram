@@ -9,7 +9,7 @@ const opencode = await createOpencode({
   port: 4096,
   config: {
     model: "opencode/big-pickle",
-    agent: "dnd"
+    default_agent: "dnd"
   } as never,
 });
 
