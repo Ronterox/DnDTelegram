@@ -140,20 +140,16 @@ func main() {
 		return
 	}
 
-	games := make(map[int64]*Game)
-	offset := 0
+	db := NewDatabase()
 
-	file, err := os.Open("games.json")
-	if err == nil {
-		if err = json.NewDecoder(file).Decode(&games); err != nil {
-			fmt.Println("Error decoding file:", err)
-		} else {
-			fmt.Printf("%d games loaded\n", len(games))
-		}
-		file.Close()
-	} else {
-		fmt.Println("Error opening file:", err)
+	games, err := db.LoadAllGames()
+	if err != nil {
+		fmt.Println("Error loading games:", err)
+		games = make(map[int64]*Game)
 	}
+	fmt.Printf("%d games loaded from database\n", len(games))
+
+	offset := 0
 
 	fmt.Printf("Bot started with token ending in %s... Press Ctrl+C to stop.\n", api.token[len(api.token)-8:])
 
@@ -171,22 +167,13 @@ func main() {
 	go func() {
 		for {
 			time.Sleep(time.Second * 60)
-			fmt.Println("Saving game states...")
+			fmt.Println("Saving game states to database...")
 
-			file, err := os.Create("games.json")
-			if err != nil {
-				fmt.Println("Error creating file:", err)
-				continue
+			for chatID, game := range games {
+				if err := db.SaveGame(chatID, game); err != nil {
+					fmt.Printf("Error saving game %d: %v\n", chatID, err)
+				}
 			}
-
-			encoder := json.NewEncoder(file)
-			encoder.SetIndent("", "  ")
-
-			if err = encoder.Encode(games); err != nil {
-				fmt.Println("Error encoding file:", err)
-			}
-
-			file.Close()
 		}
 	}()
 
