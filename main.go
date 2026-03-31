@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+var games map[int64]*Game
+
 const ALBERTO_ID = 1426815752
 
 const ERR_GAME_NIL = "No hay ninguna campaña en curso, empieza una uniendote con /join"
@@ -142,7 +144,8 @@ func main() {
 
 	db := NewDatabase()
 
-	games, err := db.LoadAllGames()
+	var err error
+	games, err = db.LoadAllGames()
 	if err != nil {
 		fmt.Println("Error loading games:", err)
 		games = make(map[int64]*Game)
@@ -293,6 +296,8 @@ func main() {
 						if !game.SetNextPlayer() {
 							game.Started = false
 							api.sendText(chatID, MSG_GAME_ENDED)
+
+							go db.ExportToWeb(chatID, fmt.Sprintf("%s passed turn. Game ended.", game.CurrentPlayer.Name), 0)
 						} else {
 							player := game.CurrentPlayer
 
@@ -305,6 +310,8 @@ func main() {
 							}
 
 							api.sendButtons(chatID, message, defaultLayout)
+
+							go db.ExportToWeb(chatID, fmt.Sprintf("Turn passed to %s", player.Name), 0)
 						}
 					case BUTTON_PAUSE:
 						game.CurrentPlayer.State = StatePaused
@@ -367,6 +374,14 @@ func main() {
 				}
 
 				api.sendButtons(chatID, message, defaultLayout)
+
+				go db.ExportFullToWeb(chatID)
+				// go func() {
+				// 	webURL := db.GetWebURL(chatID)
+				// 	api.sendWithURLButton(chatID, "🎮 Ver la partida en la web", "Abrir Web", webURL)
+				// }()
+				webURL := db.GetWebURL(chatID)
+				api.sendText(chatID, "🎮 Ver tu partida: "+webURL)
 			case "/join":
 				if player != nil {
 					api.sendText(chatID, fmt.Sprintf("¡Ya eres un jugador! %+v", player))
@@ -397,6 +412,14 @@ func main() {
 					newPlayer := NewPlayer(userID, message.User.FirstName, rest)
 					game.Players = append(game.Players, newPlayer)
 					api.sendText(chatID, fmt.Sprintf(MSG_JOINED, newPlayer.Name))
+
+					go db.ExportFullToWeb(chatID)
+					// go func() {
+					// 	webURL := db.GetWebURL(chatID)
+					// 	api.sendWithURLButton(chatID, "🎮 Ver la partida en la web", "Abrir Web", webURL)
+					// }()
+					webURL := db.GetWebURL(chatID)
+					api.sendText(chatID, "🎮 Ver tu partida: "+webURL)
 				} else {
 					api.sendText(chatID, "Escribe una descripción para tu personaje /join <descripcion>")
 				}
@@ -533,6 +556,8 @@ func main() {
 						}
 
 						api.sendButtons(chatID, message, defaultLayout)
+
+						go db.ExportToWeb(chatID, fmt.Sprintf("%s: %s", game.CurrentPlayer.Name, text), 0)
 					}
 				}
 			}

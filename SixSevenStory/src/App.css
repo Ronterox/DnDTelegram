@@ -1,0 +1,171 @@
+/* ── Root ── */
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Body ── */
+body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow-x: hidden; /* evita scroll horizontal por la imagen */
+}
+
+/* ── App wrapper ── */
+.app {
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+  gap: 1.5rem;
+
+  /* 🔥 Background full screen, aunque se distorsione */
+  background-image: url('./assets/Gemini_Generated_Image_kkbyd3kkbyd3kkby.png');
+  background-size: cover; /* ocupa toda la pantalla */
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-attachment: fixed; /* fijo al scroll */
+}
+
+/* ── Header ── */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1rem;
+}
+
+.app-header__subtitle {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.app-header__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+/* ── Refresh indicator ── */
+.refresh-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.refresh-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--green);
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--green);
+  animation: blink 2s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ── Panels ── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+  padding: 1.2rem;
+  position: relative;
+}
+
+.panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+
+/* Panel con scroll interno */
+.scroll-panel {
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+/* ── Map section ── */
+.section-map {
+  width: 100%;
+}
+
+/* ── Bottom layout ── */
+.bottom-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* ── Event counter ── */
+.event-counter {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* ── Loading / Error ── */
+.state-loading,
+.state-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 1rem;
+}
+
+.state-error {
+  color: var(--red-light);
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border-dim);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 1000px) {
+  .bottom-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .app {
+    padding: 1rem;
+  }
+
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

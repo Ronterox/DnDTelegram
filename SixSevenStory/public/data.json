@@ -1,0 +1,60 @@
+{
+  "history": [
+    {
+      "action": "Ramon met Leo at the market.",
+      "map": "##############\n#.......#...#\n#..#........#\n#...3###......#\n#....###.....#\n#...........#\n#...........#\n#...........#\n#...........#\n#...........#\n#...........#\n#...........#\n#############"
+    },
+    {
+      "action": "Ramon and Leo went to the tavern.",
+      "map": "############\n#...........#\n#...........#\n#...........#\n#...........#\n#...........#\n#...........#\n#...........#\n#...........#\n#...........#\n#...........#\n#...........#\n#############"
+    },
+    {
+      "action": "They found a place to rest.",
+      "map": "############\n#...........#\n#...........#\n#...........#\n#...........#\n#...........#\n#...........#\n#...........#\n#...........#\n#...........#\n#...........#\n#...........#\n#############"
+    },
+    {
+      "action": "Ramon took some poisoning damage.",
+      "damage": 10
+    },
+    {
+      "action": "Ramón: Atacooooo a Ricardo test"
+    },
+    {
+      "action": "Ramón: Espera voy a mandar la url por chat"
+    }
+  ],
+  "players": [
+    {
+      "name": "Ramón",
+      "info": "ogro",
+      "role": "None",
+      "race": "Human",
+      "items": [],
+      "stats": {
+        "health": 9,
+        "mana": 0,
+        "strength": 11,
+        "dexterity": 14,
+        "intelligence": 12,
+        "wisdom": 13,
+        "charisma": 12
+      }
+    },
+    {
+      "name": "Ricardo",
+      "info": "test",
+      "role": "None",
+      "race": "Human",
+      "items": [],
+      "stats": {
+        "health": 13,
+        "mana": 0,
+        "strength": 13,
+        "dexterity": 18,
+        "intelligence": 16,
+        "wisdom": 12,
+        "charisma": 10
+      }
+    }
+  ]
+}

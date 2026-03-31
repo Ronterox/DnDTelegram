@@ -1,0 +1,113 @@
+/* =====================================================
+   index.css — Global medieval / parchment theme
+   Fonts: Cinzel (headings) + Crimson Text (body)
+   ===================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ── CSS Variables ── */
+:root {
+  --bg: #0d0b07;
+  --surface: #181209;
+  --surface2: #201810;
+  --border: #5a3e12;
+  --border-dim: #2e2208;
+  --gold: #c9a84c;
+  --gold-light: #e8c97e;
+  --text: #e0cc99;
+  --text-dim: #9a8050;
+  --red: #c0392b;
+  --red-light: #e74c3c;
+  --blue: #2980b9;
+  --green: #27ae60;
+
+  --font-heading: 'Cinzel', Georgia, serif;
+  --font-deco: 'Cinzel Decorative', 'Cinzel', serif;
+  --font-body: 'Crimson Text', Georgia, serif;
+  --font-mono: 'Courier New', Courier, monospace;
+}
+
+/* ── Reset ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--gold-light);
+  letter-spacing: 0.04em;
+}
+
+h1 {
+  font-family: var(--font-deco);
+  font-size: clamp(1.4rem, 3vw, 2rem);
+}
+
+h2 {
+  font-size: clamp(0.95rem, 2vw, 1.15rem);
+}
+
+h3 {
+  font-size: 0.95rem;
+}
+
+button {
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--gold-light);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4em 1em;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+button:hover {
+  border-color: var(--gold);
+  box-shadow: 0 0 10px rgba(201, 168, 76, 0.4);
+  color: var(--gold-light);
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border-dim);
+  margin: 0.6rem 0;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}

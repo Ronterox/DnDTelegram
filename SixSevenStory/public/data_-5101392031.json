@@ -1,0 +1,97 @@
+{
+  "history": [
+    {
+      "action": "Ricardo: I kill ramon"
+    },
+    {
+      "action": "Turn passed to Ramón"
+    },
+    {
+      "action": "Ramón: I KILL RICARDO"
+    },
+    {
+      "action": "Ramón: KILL RICARDO"
+    },
+    {
+      "action": "Turn passed to Ricardo"
+    },
+    {
+      "action": "Ricardo: Gane"
+    },
+    {
+      "action": "Turn passed to Ramón"
+    },
+    {
+      "action": "Ramón: KILL BOTH"
+    },
+    {
+      "action": "Ramón: Desastroso"
+    },
+    {
+      "action": "Ramón: ME LEVANTO ESTA RICARDO DORMIDO Y ME LO COMO"
+    },
+    {
+      "action": "Ramón: Entro de una patada"
+    },
+    {
+      "action": "Ramón: Veo que es mi archienemigo me adelanto a sus movimientos y le quito las armas"
+    },
+    {
+      "action": "Ramón: Es para pelear"
+    },
+    {
+      "action": "Ramón: Le pedí pelear a mi hermana y a la gente del bar con mi labia"
+    },
+    {
+      "action": "Ramón: Busco ventaja y busco aliados dentro del bar. Mi equipo debería de estar llegando"
+    },
+    {
+      "action": "Ramón: AL ATAQUEEEE MÁTENLOS A TODOS! NI UNO VIVOO"
+    },
+    {
+      "action": "Ramón: No quiero morir me escondo detrás de mi hermana y busco a un curandero que vi al entrar al bar"
+    },
+    {
+      "action": "Ramón: Ordeno que los maten y me lo bebo  mientras veo como sigue peleando"
+    },
+    {
+      "action": "Ramón: Hablo con lucia mi hermana de otro padre"
+    },
+    {
+      "action": "Ramón: NO QUIERO TENER INCESTO LOCAA TÁPATE"
+    },
+    {
+      "action": "Ramón: TÁPATE MÁS, se te ve el pelo."
+    },
+    {
+      "action": "Ramón: Atad a mi hermana está loca!"
+    },
+    {
+      "action": "Ramón: Me desmayo"
+    },
+    {
+      "action": "Ramón: Coger pociones para el inventario"
+    },
+    {
+      "action": "Ramón: Súbeme las stats para una prueba y añádeme una poción al inventario. Es para ver si funciona la web"
+    }
+  ],
+  "players": [
+    {
+      "name": "Ramón",
+      "info": "ultimaprueba",
+      "role": "None",
+      "race": "Human",
+      "items": [],
+      "stats": {
+        "health": 6,
+        "mana": 0,
+        "strength": 11,
+        "dexterity": 14,
+        "intelligence": 9,
+        "wisdom": 11,
+        "charisma": 9
+      }
+    }
+  ]
+}

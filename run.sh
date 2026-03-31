@@ -32,6 +32,10 @@ echo "Starting Bot..."
 go run . &
 BOT_PID=$!
 
+echo "Starting web..."
+cd SixSevenStory && npm run dev &
+
+
 echo ""
 echo "All services started!"
 echo "  - D&D OpenCode: port 3000"

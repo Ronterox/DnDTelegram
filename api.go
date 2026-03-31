@@ -44,7 +44,8 @@ type UpdateResult struct {
 
 type InlineKeyboardButton struct {
 	Text         string `json:"text"`
-	CallbackData string `json:"callback_data"`
+	CallbackData string `json:"callback_data,omitempty"`
+	URL          string `json:"url,omitempty"`
 }
 
 type InlineKeyboardMarkup struct {
@@ -179,4 +180,11 @@ func (a *API) editMessage(chatID int64, messageID int64, text string, buttons []
 			continue
 		}
 	}
+}
+
+func (a *API) sendWithURLButton(chatID int64, text string, buttonText string, buttonURL string) {
+	buttons := [][]InlineKeyboardButton{{
+		{Text: buttonText, URL: buttonURL},
+	}}
+	a.sendButtons(chatID, text, buttons)
 }
