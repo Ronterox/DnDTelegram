@@ -1,0 +1,8 @@
+.git
+.gitignore
+node_modules
+dnd/node_modules
+SixSevenStory/node_modules
+*.log
+api.log
+opencode.log
