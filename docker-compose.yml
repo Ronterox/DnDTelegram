@@ -1,0 +1,72 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  dnd-opencode:
+    build: .
+    command: bun run opencode
+    working_dir: /app/dnd
+    environment:
+      - OPENCODE_SERVER_PASSWORD=${OPENCODE_SERVER_PASSWORD}
+    ports:
+      - "4096:4096"
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4096/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  dnd-api:
+    build: .
+    command: bun start
+    working_dir: /app/dnd
+    ports:
+      - "3000:3000"
+    depends_on:
+      - dnd-opencode
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  game-api:
+    build: .
+    command: bun run game-api.js
+    working_dir: /app
+    environment:
+      - REDIS_HOST=redis
+    ports:
+      - "3001:3001"
+    depends_on:
+      - redis
+
+  sixsevenstory:
+    build: .
+    command: bun run dev --host
+    working_dir: /app/SixSevenStory
+    ports:
+      - "5173:5173"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  bot:
+    build: .
+    command: go run main.go
+    working_dir: /app
+    environment:
+      - TOKEN=${TOKEN}
+    depends_on:
+      - dnd-api
+      - game-api
+
+volumes:
+  redis_data:
