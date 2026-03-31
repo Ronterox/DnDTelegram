@@ -295,7 +295,12 @@ func main() {
 							game.Started = false
 							api.sendText(chatID, MSG_GAME_ENDED)
 
-							go db.ExportToWeb(chatID, fmt.Sprintf("%s passed turn. Game ended.", game.CurrentPlayer.Name), 0)
+							go func() {
+								err := db.ExportToWeb(chatID, fmt.Sprintf("%s passed turn. Game ended.", game.CurrentPlayer.Name), 0)
+								if err != nil {
+									fmt.Printf("[main] ERROR in ExportToWeb: %v\n", err)
+								}
+							}()
 						} else {
 							player := game.CurrentPlayer
 
@@ -309,7 +314,12 @@ func main() {
 
 							api.sendButtons(chatID, message, defaultLayout)
 
-							go db.ExportToWeb(chatID, fmt.Sprintf("Turn passed to %s", player.Name), 0)
+							go func() {
+								err := db.ExportToWeb(chatID, fmt.Sprintf("Turn passed to %s", player.Name), 0)
+								if err != nil {
+									fmt.Printf("[main] ERROR in ExportToWeb: %v\n", err)
+								}
+							}()
 						}
 					case BUTTON_PAUSE:
 						game.CurrentPlayer.State = StatePaused
@@ -373,7 +383,12 @@ func main() {
 
 				api.sendButtons(chatID, message, defaultLayout)
 
-				go db.ExportFullToWeb(chatID)
+				go func() {
+					err := db.ExportFullToWeb(chatID)
+					if err != nil {
+						fmt.Printf("[main] ERROR in ExportFullToWeb: %v\n", err)
+					}
+				}()
 				// go func() {
 				// 	webURL := db.GetWebURL(chatID)
 				// 	api.sendWithURLButton(chatID, "🎮 Ver la partida en la web", "Abrir Web", webURL)
@@ -411,7 +426,12 @@ func main() {
 					game.Players = append(game.Players, newPlayer)
 					api.sendText(chatID, fmt.Sprintf(MSG_JOINED, newPlayer.Name))
 
-					go db.ExportFullToWeb(chatID)
+					go func() {
+						err := db.ExportFullToWeb(chatID)
+						if err != nil {
+							fmt.Printf("[main] ERROR in ExportFullToWeb: %v\n", err)
+						}
+					}()
 					// go func() {
 					// 	webURL := db.GetWebURL(chatID)
 					// 	api.sendWithURLButton(chatID, "🎮 Ver la partida en la web", "Abrir Web", webURL)
@@ -555,7 +575,12 @@ func main() {
 
 						api.sendButtons(chatID, message, defaultLayout)
 
-						go db.ExportToWeb(chatID, fmt.Sprintf("%s: %s", game.CurrentPlayer.Name, text), 0)
+						go func() {
+							err := db.ExportToWeb(chatID, fmt.Sprintf("%s: %s", game.CurrentPlayer.Name, text), 0)
+							if err != nil {
+								fmt.Printf("[main] ERROR in ExportToWeb: %v\n", err)
+							}
+						}()
 					}
 				}
 			}

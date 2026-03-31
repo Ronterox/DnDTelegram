@@ -92,10 +92,13 @@ func (db *Database) GetWebURL(chatID int64) string {
 }
 
 func (db *Database) ExportToWeb(chatID int64, action string, damage int) error {
+	fmt.Printf("[ExportToWeb] Starting export for chatID %d\n", chatID)
 	game := games[chatID]
 	if game == nil {
+		fmt.Printf("[ExportToWeb] ERROR: no game found for chatID %d in memory\n", chatID)
 		return fmt.Errorf("no game found for chatID %d", chatID)
 	}
+	fmt.Printf("[ExportToWeb] Found game with %d players\n", len(game.Players))
 
 	webState := game.ToWebFormat()
 
@@ -126,18 +129,22 @@ func (db *Database) ExportToWeb(chatID int64, action string, damage int) error {
 	}
 
 	if err := os.WriteFile(absPath, jsonData, 0644); err != nil {
+		fmt.Printf("[ExportToWeb] ERROR writing file: %v\n", err)
 		return fmt.Errorf("write error: %w", err)
 	}
 
-	fmt.Printf("Exported game state to %s\n", absPath)
+	fmt.Printf("[ExportToWeb] Successfully exported to %s\n", absPath)
 	return nil
 }
 
 func (db *Database) ExportFullToWeb(chatID int64) error {
+	fmt.Printf("[ExportFullToWeb] Starting full export for chatID %d\n", chatID)
 	game := games[chatID]
 	if game == nil {
+		fmt.Printf("[ExportFullToWeb] ERROR: no game found for chatID %d in memory\n", chatID)
 		return fmt.Errorf("no game found for chatID %d", chatID)
 	}
+	fmt.Printf("[ExportFullToWeb] Found game with %d players\n", len(game.Players))
 
 	webState := game.ToWebFormat()
 
@@ -159,13 +166,15 @@ func (db *Database) ExportFullToWeb(chatID int64) error {
 
 	absPath, err := filepath.Abs(dataPath)
 	if err != nil {
+		fmt.Printf("[ExportFullToWeb] ERROR getting abs path: %v\n", err)
 		return fmt.Errorf("abs path error: %w", err)
 	}
 
 	if err := os.WriteFile(absPath, jsonData, 0644); err != nil {
+		fmt.Printf("[ExportFullToWeb] ERROR writing file: %v\n", err)
 		return fmt.Errorf("write error: %w", err)
 	}
 
-	fmt.Printf("Exported full game state to %s\n", absPath)
+	fmt.Printf("[ExportFullToWeb] Successfully exported to %s\n", absPath)
 	return nil
 }
