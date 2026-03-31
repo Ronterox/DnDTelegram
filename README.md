@@ -302,6 +302,62 @@ The script starts all services in the correct order:
 
 Press `Ctrl+C` to stop all services.
 
+### Docker Deployment
+
+#### Single Container (Dockerfile)
+
+Build and run everything in one container:
+
+```bash
+# Build the image
+docker build -t tg-dnd .
+
+# Run the container
+docker run -d \
+  -e TOKEN="your_bot_token_here" \
+  -e OPENCODE_SERVER_PASSWORD="your_password" \
+  -p 3000:3000 \
+  -p 3001:3001 \
+  -p 4096:4096 \
+  -p 5173:5173 \
+  --name tg-dnd tg-dnd
+```
+
+#### Multi-Container (Docker Compose)
+
+For better service isolation, use docker-compose:
+
+```bash
+# Build and start all services
+TOKEN="your_bot_token_here" OPENCODE_SERVER_PASSWORD="your_password" docker-compose up --build
+
+# Run in detached mode
+TOKEN="your_bot_token_here" OPENCODE_SERVER_PASSWORD="your_password" docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop all services
+docker-compose down
+```
+
+**Docker Services:**
+| Service | Port | Description |
+|---------|------|-------------|
+| `redis` | 6379 | Game state storage |
+| `dnd-opencode` | 4096 | OpenCode AI server |
+| `dnd-api` | 3000 | D&D API (chat, init) |
+| `game-api` | 3001 | Game state API |
+| `sixsevenstory` | 5173 | Web viewer |
+| `bot` | - | Telegram bot |
+
+**Docker Environment Variables:**
+| Variable | Description |
+|----------|-------------|
+| `TOKEN` | Telegram Bot API token (required) |
+| `OPENCODE_SERVER_PASSWORD` | OpenCode server password (recommended) |
+| `REDIS_HOST` | Redis host (default: redis in compose) |
+
 ---
 
 ## Data Flow Example
