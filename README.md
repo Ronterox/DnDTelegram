@@ -290,7 +290,6 @@ chmod +x run.sh
 | Variable | Description |
 |----------|-------------|
 | `TOKEN` | Telegram Bot API token (required) |
-| `OPENCODE_SERVER_PASSWORD` | Password for OpenCode server (recommended) |
 
 The script starts all services in the correct order:
 - Redis (optional)
@@ -315,7 +314,6 @@ docker build -t tg-dnd .
 # Run the container
 docker run -d \
   -e TOKEN="your_bot_token_here" \
-  -e OPENCODE_SERVER_PASSWORD="your_password" \
   -p 3000:3000 \
   -p 3001:3001 \
   -p 4096:4096 \
@@ -329,10 +327,10 @@ For better service isolation, use docker-compose:
 
 ```bash
 # Build and start all services
-TOKEN="your_bot_token_here" OPENCODE_SERVER_PASSWORD="your_password" docker-compose up --build
+TOKEN="your_bot_token_here" docker-compose up --build
 
 # Run in detached mode
-TOKEN="your_bot_token_here" OPENCODE_SERVER_PASSWORD="your_password" docker-compose up -d
+TOKEN="your_bot_token_here" docker-compose up -d
 
 # View logs
 docker-compose logs -f
@@ -355,7 +353,6 @@ docker-compose down
 | Variable | Description |
 |----------|-------------|
 | `TOKEN` | Telegram Bot API token (required) |
-| `OPENCODE_SERVER_PASSWORD` | OpenCode server password (recommended) |
 | `REDIS_HOST` | Redis host (default: redis in compose) |
 
 ---

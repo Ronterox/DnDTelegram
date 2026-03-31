@@ -15,8 +15,6 @@ services:
     build: .
     command: bun run opencode
     working_dir: /app/dnd
-    environment:
-      - OPENCODE_SERVER_PASSWORD=${OPENCODE_SERVER_PASSWORD}
     ports:
       - "4096:4096"
     depends_on:

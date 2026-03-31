@@ -35,7 +35,6 @@ RUN cd /app/dnd && bun install
 RUN cd /app/SixSevenStory && bun install
 
 ENV TOKEN=""
-ENV OPENCODE_SERVER_PASSWORD=""
 ENV REDIS_HOST=localhost
 
 EXPOSE 3000 3001 4096 5173
