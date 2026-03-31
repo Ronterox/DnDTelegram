@@ -144,18 +144,16 @@ func main() {
 
 	db := NewDatabase()
 
-	var err error
-	games, err = db.LoadAllGames()
+	games, err := db.LoadAllGames()
 	if err != nil {
 		fmt.Println("Error loading games:", err)
 		games = make(map[int64]*Game)
 	}
+
 	fmt.Printf("%d games loaded from database\n", len(games))
-
-	offset := 0
-
 	fmt.Printf("Bot started with token ending in %s... Press Ctrl+C to stop.\n", api.token[len(api.token)-8:])
 
+	offset := 0
 	emptyLayout := [][]InlineKeyboardButton{}
 	defaultLayout := [][]InlineKeyboardButton{{
 		{Text: "Inventario", CallbackData: BUTTON_INVENTORY},
@@ -267,13 +265,13 @@ func main() {
 							var output bytes.Buffer
 
 							for _, dice := range []int{4, 6, 8, 10, 12, 20} {
-								output.WriteString(fmt.Sprintf("D%d: %d\n", dice, game.CurrentPlayer.Roll(dice)))
+								fmt.Fprintf(&output, "D%d: %d\n", dice, game.CurrentPlayer.Roll(dice))
 							}
 
 							output.WriteString("\n")
 
 							for key, value := range game.CurrentPlayer.Stats {
-								output.WriteString(fmt.Sprintf("%s: %d (+%d)\n", key, value, game.CurrentPlayer.RollModifier(key)))
+								fmt.Fprintf(&output, "%s: %d (+%d)\n", key, value, game.CurrentPlayer.RollModifier(key))
 							}
 
 							input := fmt.Sprintf(ROLL_PROMPT, game.CurrentPlayer.Name, output.String())
@@ -488,7 +486,7 @@ func main() {
 								smallest = min(rolls[i], smallest)
 								total += rolls[i]
 
-								out.WriteString(fmt.Sprintf("%d", rolls[i]))
+								fmt.Fprintf(&out, "%d", rolls[i])
 								out.WriteString(" ")
 							}
 
@@ -497,15 +495,15 @@ func main() {
 
 							out.WriteString("\n")
 							if result > 16 {
-								out.WriteString(fmt.Sprintf("¡Tu %s es de %d, en verdad que eres habilidoso!", key, result))
+								fmt.Fprintf(&out, "¡Tu %s es de %d, en verdad que eres habilidoso!", key, result)
 							} else if result > 14 {
-								out.WriteString(fmt.Sprintf("¡Tu %s es de %d, estas sobre el promedio!", key, result))
+								fmt.Fprintf(&out, "¡Tu %s es de %d, estas sobre el promedio!", key, result)
 							} else if result > 9 {
-								out.WriteString(fmt.Sprintf("¡Tu %s es de %d, un valor decente!", key, result))
+								fmt.Fprintf(&out, "¡Tu %s es de %d, un valor decente!", key, result)
 							} else if result > 6 {
-								out.WriteString(fmt.Sprintf("Tu %s es de %d, un poco debajo del promedio...", key, result))
+								fmt.Fprintf(&out, "Tu %s es de %d, un poco debajo del promedio...", key, result)
 							} else {
-								out.WriteString(fmt.Sprintf("Tu %s es de %d... oof, que mala suerte no?", key, result))
+								fmt.Fprintf(&out, "Tu %s es de %d... oof, que mala suerte no?", key, result)
 							}
 							out.WriteString("\n")
 						}
