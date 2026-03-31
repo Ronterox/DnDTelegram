@@ -7,10 +7,6 @@ cd "$SCRIPT_DIR"
 
 echo "Starting all services..."
 
-if [ -z "$OPENCODE_SERVER_PASSWORD" ]; then
-    echo "WARNING: OPENCODE_SERVER_PASSWORD not set - D&D OpenCode may fail"
-fi
-
 echo "Starting Redis..."
 redis-server --daemonize yes 2>/dev/null || true
 
