@@ -95,8 +95,18 @@ func (db *Database) ExportToWeb(chatID int64, action string, damage int) error {
 	fmt.Printf("[ExportToWeb] Starting export for chatID %d\n", chatID)
 	game := games[chatID]
 	if game == nil {
-		fmt.Printf("[ExportToWeb] ERROR: no game found for chatID %d in memory\n", chatID)
-		return fmt.Errorf("no game found for chatID %d", chatID)
+		fmt.Printf("[ExportToWeb] No game in memory, loading from database...\n")
+		var err error
+		game, err = db.LoadGame(chatID)
+		if err != nil {
+			fmt.Printf("[ExportToWeb] ERROR loading from database: %v\n", err)
+			return fmt.Errorf("no game found for chatID %d", chatID)
+		}
+		if game == nil {
+			fmt.Printf("[ExportToWeb] ERROR: no game found in database for chatID %d\n", chatID)
+			return fmt.Errorf("no game found for chatID %d", chatID)
+		}
+		fmt.Printf("[ExportToWeb] Loaded game from database with %d players\n", len(game.Players))
 	}
 	fmt.Printf("[ExportToWeb] Found game with %d players\n", len(game.Players))
 
@@ -141,8 +151,18 @@ func (db *Database) ExportFullToWeb(chatID int64) error {
 	fmt.Printf("[ExportFullToWeb] Starting full export for chatID %d\n", chatID)
 	game := games[chatID]
 	if game == nil {
-		fmt.Printf("[ExportFullToWeb] ERROR: no game found for chatID %d in memory\n", chatID)
-		return fmt.Errorf("no game found for chatID %d", chatID)
+		fmt.Printf("[ExportFullToWeb] No game in memory, loading from database...\n")
+		var err error
+		game, err = db.LoadGame(chatID)
+		if err != nil {
+			fmt.Printf("[ExportFullToWeb] ERROR loading from database: %v\n", err)
+			return fmt.Errorf("no game found for chatID %d", chatID)
+		}
+		if game == nil {
+			fmt.Printf("[ExportFullToWeb] ERROR: no game found in database for chatID %d\n", chatID)
+			return fmt.Errorf("no game found for chatID %d", chatID)
+		}
+		fmt.Printf("[ExportFullToWeb] Loaded game from database with %d players\n", len(game.Players))
 	}
 	fmt.Printf("[ExportFullToWeb] Found game with %d players\n", len(game.Players))
 
