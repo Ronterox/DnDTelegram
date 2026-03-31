@@ -14,8 +14,11 @@ import type {
 } from "./types";
 
 import jwt, { JwtPayload } from "jsonwebtoken";
+import { DatabaseHelper } from "./sqlite";
 
+const db = new DatabaseHelper();
 export const app = express();
+
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 
@@ -232,14 +235,17 @@ app.get("/api/auth/login", async (req: Request, res: Response) => {
             .json({ error: "email and password are required" });
     }
 
+    const user = await db.getUser(email);
+    if (!user) return res.status(401).json({ error: "UNAUTHORIZED" });
+
     const hashedPassword = crypto
         .createHash("sha256")
         .update(password)
         .digest("hex");
-    if (hashedPassword !== process.env.PASSWORD) {
+
+    if (hashedPassword !== user.password) {
         return res.status(401).json({ error: "UNAUTHORIZED" });
     }
-    const user = { email, username: email };
     const token = encodeUserToken(user);
     res.json({ token });
 });
@@ -252,7 +258,7 @@ app.post("/api/auth/register", async (req: Request, res: Response) => {
             .json({ error: "username, email and password are required" });
     }
 
-    const userExists = false;
+    const userExists = await db.getUser(email);
     if (userExists)
         return res.status(400).json({ error: "User already exists" });
 
@@ -263,6 +269,8 @@ app.post("/api/auth/register", async (req: Request, res: Response) => {
 
     const newUser = { email, username, password: hashedPassword };
     const token = encodeUserToken(newUser);
+
+    await db.usertUser(newUser);
 
     res.json({ token });
 });
