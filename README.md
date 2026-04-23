@@ -19,6 +19,20 @@ The system is designed for **Spanish-language D&D 5e campaigns** with a medieval
 
 ---
 
+### RabbitMQ Monitoring
+
+The project includes the **RabbitMQ Management Plugin** for real-time queue visualization.
+
+- **Access URL**: [http://localhost:15672](http://localhost:15672)
+- **Login**: `guest` / `guest`
+
+Use the management interface to:
+- Monitor message rates (publishing/consumption).
+- Inspect queue depth (Ready vs. Unacknowledged messages).
+- Troubleshoot failed messages in the `dlx_queue` (Dead Letter Queue).
+
+---
+
 ## Architecture
 
 ```
@@ -30,10 +44,14 @@ The system is designed for **Spanish-language D&D 5e campaigns** with a medieval
                                  ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           Go Telegram Bot (main.go)                          │
-│  • Handles commands (/start, /join, /ready, /roll, /pause)                  │
-│  • Manages game state (players, turns, inventory)                           │
-│  • Interfaces with D&D API and Database                                     │
+│  • Handles commands, game state, and queue-based communication               │
 └────────────────────────────────┬────────────────────────────────────────────┘
+                                 │
+                                 ▼
+                      ┌───────────────────────┐
+                      │    RabbitMQ (AMQP)    │
+                      │  (RPC/Priority/DLX)   │
+                      └──────────┬────────────┘
                                  │
          ┌───────────────────────┼───────────────────────┐
          │                       │                       │
@@ -44,31 +62,22 @@ The system is designed for **Spanish-language D&D 5e campaigns** with a medieval
 │                 │    │                 │    │   REST API)     │
 │ /api/chat       │    │ Real-time game  │    │                 │
 │ /api/init       │    │ state viewer    │    │ Game state      │
-│ /api/health     │    │                 │    │ persistence     │
 └────────┬────────┘    └────────┬────────┘    └────────┬────────┘
          │                       │                       │
          ▼                       │                       │
 ┌─────────────────┐              │                       │
 │  OpenCode AI    │              │                       │
 │  (big-pickle)   │              │                       │
-│                 │              │                       │
-│ Dungeon Master  │              │                       │
-│ Narrative Gen   │              │                       │
 └─────────────────┘              │                       │
                                  ▼                       │
                     ┌─────────────────────────┐          │
-                    │  JSON Export (web_      │          │
-                    │  export.go)             │          │
-                    │                         │          │
-                    │  /public/data_{chatId}. │          │
-                    │  json                    │          │
+                    │  JSON Export            │          │
                     └─────────────────────────┘          │
                                  │                       │
                                  └───────────┬───────────┘
                                              ▼
                               ┌─────────────────────────┐
                               │   Game State JSON      │
-                              │   (auto-refresh 5s)     │
                               └─────────────────────────┘
 ```
 
@@ -77,6 +86,7 @@ The system is designed for **Spanish-language D&D 5e campaigns** with a medieval
 | Component | Technology | Purpose |
 |-----------|------------|---------|
 | **Telegram Bot** | Go | Main game controller, message handling |
+| **RabbitMQ** | AMQP | Asynchronous message queue (RPC/DLX) |
 | **D&D API** | Bun + Express | OpenCode AI integration for DM narrative |
 | **SixSevenStory** | React 19 + Vite | Web dashboard for game viewing |
 | **Database** | REST API (SQLite) | Persistent game state storage |
