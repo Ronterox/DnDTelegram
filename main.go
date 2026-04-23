@@ -16,6 +16,7 @@ import (
 )
 
 var games map[int64]*Game
+var queueManager *QueueManager
 
 const ALBERTO_ID = 1426815752
 
@@ -93,6 +94,7 @@ func getEnv(key, fallback string) string {
 }
 
 var API_BASE = getEnv("DND_API_URL", "http://localhost:3000")
+var RABBITMQ_URL = getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672")
 
 type ChatResponse struct {
 	Response  map[string]any `json:"response"`
@@ -101,6 +103,19 @@ type ChatResponse struct {
 }
 
 func createSession(prompt string) (string, error) {
+	if queueManager != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		resp, err := queueManager.CallRPC(ctx, "init", "", map[string]string{}, 10, 60*time.Second)
+		if err == nil && resp.Success {
+			if resp.SessionID != "" {
+				return resp.SessionID, nil
+			}
+		}
+		fmt.Printf("Queue RPC init failed: %v, falling back to HTTP\n", err)
+	}
+
 	resp, err := http.Post(API_BASE+"/api/init", "application/json", bytes.NewBuffer([]byte("{}")))
 	if err != nil {
 		return "", fmt.Errorf("error creating session: %w", err)
@@ -120,6 +135,29 @@ func createSession(prompt string) (string, error) {
 }
 
 func queryAI(session string, prompt string) (string, error) {
+	if queueManager != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		payload := map[string]any{
+			"message": prompt,
+		}
+
+		// Higher priority for player actions
+		priority := uint8(5)
+		if strings.Contains(prompt, "has rolled") {
+			priority = 8
+		}
+
+		resp, err := queueManager.CallRPC(ctx, "chat", session, payload, priority, 2*time.Minute)
+		if err == nil && resp.Success {
+			if narrative, ok := resp.Response["narrative"].(string); ok {
+				return narrative, nil
+			}
+		}
+		fmt.Printf("Queue RPC chat failed: %v, falling back to HTTP\n", err)
+	}
+
 	reqBody, _ := json.Marshal(map[string]any{
 		"message":   prompt,
 		"sessionId": session,
@@ -147,6 +185,15 @@ func main() {
 	if len(api.token) != 46 {
 		fmt.Println("Invalid token. Set TOKEN environment variable.")
 		return
+	}
+
+	var err error
+	queueManager, err = NewQueueManager(RABBITMQ_URL)
+	if err != nil {
+		fmt.Printf("Could not initialize RabbitMQ: %v. Running in HTTP-only mode.\n", err)
+	} else {
+		defer queueManager.Close()
+		fmt.Println("RabbitMQ initialized successfully")
 	}
 
 	db := NewDatabase()

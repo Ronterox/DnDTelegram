@@ -3,11 +3,13 @@
   "dependencies": {
     "@opencode-ai/sdk": "^1.3.5",
     "@types/jsonwebtoken": "^9.0.10",
+    "amqplib": "^0.10.4",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
+    "@types/amqplib": "^0.10.5",
     "@types/bun": "^1.1.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
@@ -16,6 +18,8 @@
   },
   "scripts": {
     "start": "bun run server.ts",
+    "queue": "bun run queue.ts",
+    "start-all": "bun run server.ts & bun run queue.ts & wait",
     "opencode": "bun run dungeon_master.ts",
     "test": "bun test"
   }

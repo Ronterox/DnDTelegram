@@ -117,6 +117,69 @@ app.post(
     },
 );
 
+export async function handleChat(
+    message: string,
+    sessionId: string | null,
+    format?: JsonSchemaFormat,
+): Promise<ChatResponse> {
+    if (!message) {
+        throw new Error("Message is required");
+    }
+
+    const id: string = await initSession(sessionId ?? null);
+
+    console.log("Sending message to DM:", message.substring(0, 50) + "...");
+
+    const body: {
+        parts: Array<{ type: "text"; text: string }>;
+        format?: JsonSchemaFormat;
+    } = {
+        parts: [{ type: "text", text: message }],
+    };
+
+    if (format) {
+        body.format = format;
+    }
+
+    const result = await client.session.prompt({
+        path: { id },
+        body,
+    });
+
+    console.log("DM response received");
+
+    const resultData = result.data as
+        | {
+              info?: { structured?: Record<string, unknown> };
+              parts?: Array<{ type: string; text?: string }>;
+          }
+        | undefined;
+    const structured = resultData?.info?.structured;
+
+    if (structured) {
+        return {
+            response: structured,
+            sessionId: id,
+            type: "structured",
+        };
+    } else {
+        const parts = resultData?.parts ?? [];
+        const responseText: string = parts
+            .filter(
+                (p): p is { type: "text"; text: string } =>
+                    p.type === "text" && typeof p.text === "string",
+            )
+            .map((p) => p.text)
+            .join("\n");
+
+        return {
+            response: { narrative: responseText },
+            sessionId: id,
+            type: "fallback",
+        };
+    }
+}
+
 app.post(
     "/api/chat",
     async (
@@ -129,66 +192,8 @@ app.post(
     ) => {
         try {
             const { message, format, sessionId } = req.body;
-
-            if (!message) {
-                return res.status(400).json({ error: "Message is required" });
-            }
-
-            const id: string = await initSession(sessionId ?? null);
-
-            console.log(
-                "Sending message to DM:",
-                message.substring(0, 50) + "...",
-            );
-
-            const body: {
-                parts: Array<{ type: "text"; text: string }>;
-                format?: JsonSchemaFormat;
-            } = {
-                parts: [{ type: "text", text: message }],
-            };
-
-            if (format) {
-                body.format = format;
-            }
-
-            const result = await client.session.prompt({
-                path: { id },
-                body,
-            });
-
-            console.log("DM response received");
-
-            const resultData = result.data as
-                | {
-                      info?: { structured?: Record<string, unknown> };
-                      parts?: Array<{ type: string; text?: string }>;
-                  }
-                | undefined;
-            const structured = resultData?.info?.structured;
-
-            if (structured) {
-                res.json({
-                    response: structured,
-                    sessionId: id,
-                    type: "structured",
-                });
-            } else {
-                const parts = resultData?.parts ?? [];
-                const responseText: string = parts
-                    .filter(
-                        (p): p is { type: "text"; text: string } =>
-                            p.type === "text" && typeof p.text === "string",
-                    )
-                    .map((p) => p.text)
-                    .join("\n");
-
-                res.json({
-                    response: { narrative: responseText },
-                    sessionId: id,
-                    type: "fallback",
-                });
-            }
+            const response = await handleChat(message, sessionId ?? null, format);
+            res.json(response);
         } catch (error) {
             const err = error as Error;
             console.error("Chat error:", err.message);

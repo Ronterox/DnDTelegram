@@ -6,6 +6,22 @@ services:
     volumes:
       - redis_data:/data
 
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   dnd-opencode:
     build:
       context: ./dnd
@@ -19,17 +35,19 @@ services:
     build:
       context: ./dnd
       dockerfile: Dockerfile
-    command: bun start
+    command: bun run start-all
     ports:
       - "3000:3000"
     environment:
       - OPENCODE_URL=http://dnd-opencode:4096
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
       - AUTH_SECRET=your_secret_here
       - DB_PATH=/data/users.db
     volumes:
       - dnd_data:/data
     depends_on:
       - dnd-opencode
+      - rabbitmq
     restart: always
 
   game-api:
@@ -62,15 +80,18 @@ services:
       - TOKEN=${TOKEN}
       - DND_API_URL=http://dnd-api:3000
       - GAME_API_URL=http://game-api:3001
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
       - WEB_DATA_PATH=/app/data
     volumes:
       - shared_data:/app/data
     depends_on:
       - dnd-api
       - game-api
+      - rabbitmq
     restart: always
 
 volumes:
   redis_data:
   shared_data:
   dnd_data:
+  rabbitmq_data:
