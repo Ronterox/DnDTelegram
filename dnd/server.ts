@@ -23,7 +23,7 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 
 let client: OpencodeClient = createOpencodeClient({
-    baseUrl: "http://localhost:4096",
+    baseUrl: process.env.OPENCODE_URL || "http://localhost:4096",
     throwOnError: true,
 });
 

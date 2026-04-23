@@ -85,7 +85,14 @@ func failIf(condition bool, msg string) {
 	}
 }
 
-const API_BASE = "http://localhost:3000"
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
+
+var API_BASE = getEnv("DND_API_URL", "http://localhost:3000")
 
 type ChatResponse struct {
 	Response  map[string]any `json:"response"`
@@ -135,7 +142,7 @@ func queryAI(session string, prompt string) (string, error) {
 }
 
 func main() {
-	api := NewAPI(os.Getenv("TOKEN"))
+	api := NewAPI(getEnv("TOKEN", ""))
 
 	if len(api.token) != 46 {
 		fmt.Println("Invalid token. Set TOKEN environment variable.")

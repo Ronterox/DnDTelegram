@@ -3,7 +3,7 @@ import { User } from "./types";
 export class DatabaseHelper {
     private db: Database;
 
-    constructor(dbName: string = "users.db") {
+    constructor(dbName: string = process.env.DB_PATH || "users.db") {
         this.db = new Database(dbName, { strict: true });
         this.init();
     }

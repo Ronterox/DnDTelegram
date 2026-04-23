@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
 const redis = new Redis({
-  host: '127.0.0.1',
+  host: process.env.REDIS_HOST || '127.0.0.1',
   port: 6379,
 });
 

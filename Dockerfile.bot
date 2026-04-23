@@ -1,0 +1,26 @@
+FROM golang:1.24-alpine AS builder
+
+WORKDIR /app
+
+COPY go.mod ./
+# No go.sum, so we skip it
+RUN go mod download
+
+COPY . .
+
+# Build the bot
+RUN go build -o bot .
+
+FROM alpine:latest
+
+WORKDIR /app
+
+COPY --from=builder /app/bot .
+# The bot needs the public directory to export JSON files
+# but we will mount it as a volume.
+
+# Environment variables will be provided via docker-compose
+ENV TOKEN=""
+ENV REDIS_HOST=localhost
+
+CMD ["./bot"]

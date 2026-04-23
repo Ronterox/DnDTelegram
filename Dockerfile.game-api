@@ -1,0 +1,18 @@
+FROM oven/bun:alpine
+
+WORKDIR /app
+
+# game-api.js only needs ioredis, express, cors
+# We can just copy everything or be more surgical.
+# Since it's at the root, we'll copy the needed files.
+
+COPY package.json* ./
+# If there's no package.json in root that covers game-api.js, we might need to create one or install manually.
+# Let's check if root has package.json.
+RUN bun install ioredis express cors
+
+COPY game-api.js .
+
+EXPOSE 3001
+
+CMD ["bun", "run", "game-api.js"]

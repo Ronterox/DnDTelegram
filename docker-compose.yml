@@ -1,70 +1,76 @@
 services:
   redis:
-    image: redis:7-alpine
+    image: redis:alpine
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
 
   dnd-opencode:
-    build: .
+    build:
+      context: ./dnd
+      dockerfile: Dockerfile
     command: bun run opencode
-    working_dir: /app/dnd
     ports:
       - "4096:4096"
-    depends_on:
-      - redis
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4096/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+    restart: always
 
   dnd-api:
-    build: .
+    build:
+      context: ./dnd
+      dockerfile: Dockerfile
     command: bun start
-    working_dir: /app/dnd
     ports:
       - "3000:3000"
+    environment:
+      - OPENCODE_URL=http://dnd-opencode:4096
+      - AUTH_SECRET=your_secret_here
+      - DB_PATH=/data/users.db
+    volumes:
+      - dnd_data:/data
     depends_on:
       - dnd-opencode
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    restart: always
 
   game-api:
-    build: .
-    command: bun run game-api.js
-    working_dir: /app
-    environment:
-      - REDIS_HOST=redis
+    build:
+      context: .
+      dockerfile: Dockerfile.game-api
     ports:
       - "3001:3001"
+    environment:
+      - REDIS_HOST=redis
     depends_on:
       - redis
+    restart: always
 
   sixsevenstory:
-    build: .
-    command: bun run dev --host
-    working_dir: /app/SixSevenStory
+    build:
+      context: ./SixSevenStory
+      dockerfile: Dockerfile
     ports:
       - "5173:5173"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    volumes:
+      - shared_data:/app/public
+    restart: always
 
   bot:
-    build: .
-    command: go run main.go
-    working_dir: /app
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
     environment:
       - TOKEN=${TOKEN}
+      - DND_API_URL=http://dnd-api:3000
+      - GAME_API_URL=http://game-api:3001
+      - WEB_DATA_PATH=/app/data
+    volumes:
+      - shared_data:/app/data
     depends_on:
       - dnd-api
       - game-api
+    restart: always
 
 volumes:
   redis_data:
+  shared_data:
+  dnd_data:

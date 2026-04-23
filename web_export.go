@@ -81,7 +81,7 @@ func (g *Game) ToWebFormat() WebGameState {
 	}
 }
 
-const WebDataPath = "SixSevenStory/public"
+var WebDataPath = getEnv("WEB_DATA_PATH", "SixSevenStory/public")
 
 func (db *Database) GetWebDataPath(chatID int64) string {
 	return fmt.Sprintf("%s/data_%d.json", WebDataPath, chatID)

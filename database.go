@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const DBBaseURL = "http://localhost:3001"
+var DBBaseURL = getEnv("GAME_API_URL", "http://localhost:3001")
 
 type Database struct {
 	client  *http.Client
