@@ -7,6 +7,7 @@ RUN apk add --no-cache curl bash
 
 # Install opencode binary
 RUN curl -fsSL https://opencode.ai/install | bash
+ENV PATH="/root/.opencode/bin:${PATH}"
 
 COPY package.json bun.lock* ./
 RUN bun install
