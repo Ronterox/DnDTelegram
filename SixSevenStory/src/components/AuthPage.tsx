@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ?? "";
+
 export default function AuthPage({
     setAuthenticated,
 }: {
@@ -26,7 +28,7 @@ export default function AuthPage({
         const endpoint = isLoginView ? "/api/auth/login" : "/api/auth/register";
 
         try {
-            const response = await fetch(`http://localhost:3000${endpoint}`, {
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(
@@ -46,8 +48,16 @@ export default function AuthPage({
             setAuthenticated(true);
 
             alert(`${isLoginView ? "Login" : "Registration"} successful!`);
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            if (err instanceof TypeError) {
+                setError(
+                    "Cannot reach the auth server. Check that the backend is running and the API URL is correct.",
+                );
+            } else if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError("Unexpected authentication error.");
+            }
         } finally {
             setLoading(false);
         }
