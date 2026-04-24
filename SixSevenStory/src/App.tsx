@@ -45,7 +45,7 @@ function App() {
         if (token) {
             setAuthenticated(true);
         }
-    }, [localStorage]);
+    }, []);
 
     const fetchGame = async () => {
         if (!chatId) {
@@ -63,6 +63,7 @@ function App() {
                 } else {
                     setError(`HTTP ${res.status}`);
                 }
+                setLoading(false);
                 return;
             }
             const data = await res.json();
@@ -83,7 +84,7 @@ function App() {
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
         };
-    }, [chatId]);
+    }, [authenticated, chatId]);
 
     const syncLabel = lastSync ? lastSync.toLocaleTimeString() : "—";
 
