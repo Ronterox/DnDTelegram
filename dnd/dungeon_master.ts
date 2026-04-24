@@ -1,17 +1,12 @@
 import { createOpencode } from "@opencode-ai/sdk";
 
-interface ServerUrl {
-  url: string;
-}
-
 const opencode = await createOpencode({
   hostname: "0.0.0.0",
   port: 4096,
+  pure: true, // Run without external plugins that might interfere
   config: {
     model: "opencode/big-pickle",
-    default_agent: "dnd"
-  } as never,
+  } as any,
 });
 
-const serverUrl: string = (opencode.server as ServerUrl).url;
-console.log(`Server running at ${serverUrl}`);
+console.log(`Server running at http://0.0.0.0:4096`);

@@ -60,6 +60,7 @@ export async function initSession(
                 healthCheck.status,
                 await healthCheck.text(),
             );
+            // Create a completely empty session to avoid the systemInstruction bug
             session = await client.session.create({});
         } catch (e) {
             console.error("session.create threw:", e);
@@ -76,7 +77,7 @@ export async function initSession(
     }
 
     if (!sessions.has(id)) {
-        console.log("Prompting session with memory...");
+        console.log(`Sending rules to session ${id}...`);
         await client.session.prompt({
             path: { id },
             body: {
@@ -84,7 +85,7 @@ export async function initSession(
                 parts: [{ type: "text", text: memoryContent }],
             },
         });
-        console.log(`Session initialized with system prompt: ${id}`);
+        console.log(`Session rules initialized: ${id}`);
     }
 
     sessions.set(id, true);
@@ -123,6 +124,7 @@ export async function handleChat(
     message: string,
     sessionId: string | null,
     format?: JsonSchemaFormat,
+    retryCount: number = 0,
 ): Promise<ChatResponse> {
     if (!message) {
         throw new Error("Message is required");
@@ -130,7 +132,7 @@ export async function handleChat(
 
     const id: string = await initSession(sessionId ?? null);
 
-    console.log("Sending message to DM:", message.substring(0, 50) + "...");
+    console.log(`Sending message to DM (retry: ${retryCount}):`, message.substring(0, 50) + "...");
 
     const body: {
         parts: Array<{ type: "text"; text: string }>;
@@ -143,12 +145,21 @@ export async function handleChat(
         body.format = format;
     }
 
-    const result = await client.session.prompt({
+    let result = await client.session.prompt({
         path: { id },
         body,
     });
 
     console.log("DM response received");
+    console.log("Full result object:", JSON.stringify(result, null, 2));
+
+    // Self-healing: If the response is empty, the session might be dead.
+    // Try creating a NEW session and retrying once.
+    if (Object.keys(result.data || {}).length === 0 && retryCount < 2) {
+        console.log(`Session ${id} returned empty. Force creating fresh session and retrying (${retryCount + 1}/2)...`);
+        const newId = await initSession(null);
+        return handleChat(message, newId, format, retryCount + 1);
+    }
 
     const resultData = result.data as
         | {
@@ -160,19 +171,28 @@ export async function handleChat(
 
     if (structured) {
         return {
-            response: structured,
+            response: { narrative: "Structured response received", ...structured },
             sessionId: id,
             type: "structured",
         };
     } else {
         const parts = resultData?.parts ?? [];
-        const responseText: string = parts
-            .filter(
-                (p): p is { type: "text"; text: string } =>
-                    p.type === "text" && typeof p.text === "string",
-            )
+        console.log(`Processing ${parts.length} parts...`);
+        
+        let responseText: string = parts
+            .filter((p) => {
+                const isMetadata = p.type === "reasoning" || p.type === "step-start" || p.type === "step-finish" || p.type === "call-start" || p.type === "call-finish";
+                const hasText = typeof p.text === "string" && p.text.trim().length > 0;
+                console.log(`Part type: ${p.type}, isMetadata: ${isMetadata}, hasText: ${hasText}`);
+                return hasText && !isMetadata;
+            })
             .map((p) => p.text)
             .join("\n");
+
+        if (!responseText) {
+            responseText = "The DM is thinking...";
+            console.log("Warning: Empty response text from AI, using fallback.");
+        }
 
         return {
             response: { narrative: responseText },

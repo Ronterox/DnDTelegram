@@ -117,7 +117,8 @@ func createSession(prompt string) (string, error) {
 		fmt.Printf("Queue RPC init failed: %v, falling back to HTTP\n", err)
 	}
 
-	resp, err := http.Post(API_BASE+"/api/init", "application/json", bytes.NewBuffer([]byte("{}")))
+	reqBody, _ := json.Marshal(map[string]string{"sessionId": ""}) // We send empty to force new session, or could send prompt
+	resp, err := http.Post(API_BASE+"/api/init", "application/json", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("error creating session: %w", err)
 	}
@@ -177,6 +178,7 @@ func queryAI(session string, prompt string) (string, error) {
 	if narrative, ok := result.Response["narrative"].(string); ok {
 		return narrative, nil
 	}
+	fmt.Printf("Warning: no narrative in response. Type: %s, Response: %+v\n", result.Type, result.Response)
 	return "", fmt.Errorf("no narrative in response")
 }
 

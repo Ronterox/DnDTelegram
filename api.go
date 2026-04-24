@@ -89,14 +89,55 @@ func (a *API) getUpdates(offset int) (UpdateResult, error) {
 }
 
 func (a *API) sendText(chatID int64, text string) {
+	if text == "" {
+		return
+	}
 	fmt.Printf("Sending text to chat %x: %s\n", chatID, text)
-	jsonData, _ := json.Marshal(map[string]any{"chat_id": chatID, "text": text})
-	http.Post(a.base+"/sendMessage", "application/json", bytes.NewBuffer(jsonData))
+
+	// Telegram has a 4096 character limit per message
+	const maxLen = 4000
+	for len(text) > 0 {
+		chunk := text
+		if len(chunk) > maxLen {
+			chunk = chunk[:maxLen]
+			// Try to find a newline to split on
+			if lastNewline := strings.LastIndex(chunk, "\n"); lastNewline > 0 {
+				chunk = text[:lastNewline]
+				text = text[lastNewline+1:]
+			} else {
+				text = text[maxLen:]
+			}
+		} else {
+			text = ""
+		}
+
+		jsonData, _ := json.Marshal(map[string]any{"chat_id": chatID, "text": chunk})
+		http.Post(a.base+"/sendMessage", "application/json", bytes.NewBuffer(jsonData))
+	}
 }
 
 const MAX_TRIES = 3
 
 func (a *API) sendButtons(chatID int64, text string, buttons [][]InlineKeyboardButton) {
+	if text == "" {
+		return
+	}
+	const maxLen = 4000
+
+	if len(text) > maxLen {
+		chunk := text[:maxLen]
+		remaining := text[maxLen:]
+
+		if lastNewline := strings.LastIndex(chunk, "\n"); lastNewline > 0 {
+			chunk = text[:lastNewline]
+			remaining = text[lastNewline+1:]
+		}
+
+		a.sendText(chatID, chunk)
+		a.sendButtons(chatID, remaining, buttons)
+		return
+	}
+
 	jsonData, _ := json.Marshal(map[string]any{
 		"chat_id":      chatID,
 		"text":         text,
@@ -113,8 +154,9 @@ func (a *API) sendButtons(chatID int64, text string, buttons [][]InlineKeyboardB
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
 			var tgResp TelegramResponse
-			json.NewDecoder(resp.Body).Decode(&tgResp)
+			json.Unmarshal(body, &tgResp)
 
 			if resp.StatusCode == 429 {
 				seconds := tgResp.Parameters.RetryAfter
@@ -127,7 +169,6 @@ func (a *API) sendButtons(chatID int64, text string, buttons [][]InlineKeyboardB
 				continue
 			}
 
-			body, _ := io.ReadAll(resp.Body)
 			fmt.Printf("Telegram Rejected Request: %s\n", string(body))
 			continue
 		}
