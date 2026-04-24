@@ -22,8 +22,10 @@ export const app = express();
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 
+const OPENCODE_URL = process.env.OPENCODE_URL || "http://localhost:4096";
+
 let client: OpencodeClient = createOpencodeClient({
-    baseUrl: process.env.OPENCODE_URL || "http://localhost:4096",
+    baseUrl: OPENCODE_URL,
     throwOnError: true,
 });
 
@@ -49,10 +51,10 @@ export async function initSession(
 
     if (!id) {
         console.log("Creating new session...");
-        console.log("Checking OpenCode server at http://localhost:4096...");
+        console.log(`Checking OpenCode server at ${OPENCODE_URL}...`);
         let session;
         try {
-            const healthCheck = await fetch("http://localhost:4096/health");
+            const healthCheck = await fetch(`${OPENCODE_URL}/health`);
             console.log(
                 "Health check response:",
                 healthCheck.status,
@@ -224,7 +226,7 @@ app.get("/api/health", async (_req: Request, res: Response) => {
             res.json(health);
             return;
         }
-        const response = await fetch("http://localhost:4096/health");
+        const response = await fetch(`${OPENCODE_URL}/health`);
         const health = await response.json();
         res.json(health);
     } catch {
